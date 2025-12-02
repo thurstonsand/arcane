@@ -50,11 +50,11 @@ jobs:
       - name: Build manager binaries
         run: |
           chmod +x ./scripts/github/build-binaries.sh
-          VERSION=next REVISION=${{ github.sha }} ./scripts/github/build-binaries.sh --docker
+          VERSION=next REVISION=${{ github.sha }} ./scripts/github/build-binaries.sh
 
       - name: Build agent binaries
         run: |
-          VERSION=next REVISION=${{ github.sha }} ./scripts/github/build-binaries.sh --docker --agent
+          VERSION=next REVISION=${{ github.sha }} ./scripts/github/build-binaries.sh --agent
 
       - name: Upload binaries
         uses: actions/upload-artifact@v4

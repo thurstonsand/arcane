@@ -560,8 +560,8 @@ func (s *EventService) SyncEventsFromAgent(ctx context.Context, syncEvents []eve
 			}
 
 			if err := tx.Create(evt).Error; err != nil {
-				slog.ErrorContext(ctx, "FAILED TO CREATE EVENT IN DATABASE", 
-					"error", err, 
+				slog.ErrorContext(ctx, "FAILED TO CREATE EVENT IN DATABASE",
+					"error", err,
 					"type", syncEvt.Type,
 					"environmentID", syncEvt.EnvironmentID)
 				return fmt.Errorf("failed to create synced event: %w", err)

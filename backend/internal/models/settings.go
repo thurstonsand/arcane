@@ -49,7 +49,8 @@ type Settings struct {
 	BaseServerURL             SettingVariable `key:"baseServerUrl" meta:"label=Base Server URL;type=text;keywords=base,url,server,domain,host,endpoint,address,link;category=general;description=Set the base URL for the application"`
 	EnableGravatar            SettingVariable `key:"enableGravatar" meta:"label=Enable Gravatar;type=boolean;keywords=gravatar,avatar,profile,picture,image,user,photo;category=general;description=Enable Gravatar profile pictures for users"`
 	DefaultShell              SettingVariable `key:"defaultShell" meta:"label=Default Shell;type=text;keywords=shell,default,shellpath,path,login;category=general;description=Default shell to use for commands"`
-	EnvironmentHealthInterval SettingVariable `key:"environmentHealthInterval" meta:"label=Environment Health Check Interval;type=number;keywords=environment,health,check,interval,frequency,heartbeat,status,monitoring,uptime;category=general;description=How often to check environment connectivity in minutes (default: 2)"`
+	EnvironmentHealthInterval SettingVariable `key:"environmentHealthInterval,public" meta:"label=Environment Health Check Interval;type=number;keywords=environment,health,check,interval,frequency,heartbeat,status,monitoring,uptime;category=general;description=How often to check environment connectivity in minutes (default: 2)"`
+	GlobalVariablesSyncInterval SettingVariable `key:"globalVariablesSyncInterval,public" meta:"label=Global Variables Sync Interval;type=number;keywords=variables,sync,interval,frequency,global,env;category=general;description=How often to sync global variables to all agents in minutes (default: 5)"`
 	AccentColor               SettingVariable `key:"accentColor,public,local" meta:"label=Accent Color;type=text;keywords=color,accent,theme,css,appearance,ui;category=general;description=Primary accent color for UI"`
 
 	// Docker category

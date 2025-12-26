@@ -18,6 +18,7 @@ import (
 	"github.com/getarcaneapp/arcane/backend/internal/utils/mapper"
 	"github.com/getarcaneapp/arcane/backend/internal/utils/pagination"
 	"github.com/getarcaneapp/arcane/types/containerregistry"
+	"github.com/getarcaneapp/arcane/types/env"
 	"github.com/getarcaneapp/arcane/types/environment"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -578,6 +579,42 @@ func (s *EnvironmentService) SyncRegistriesToEnvironment(ctx context.Context, en
 	}
 
 	slog.InfoContext(ctx, "Successfully synced registries to environment", "environmentID", environmentID, "environmentName", environment.Name)
+
+	return nil
+}
+
+// SyncGlobalVariablesToAllAgents syncs global variables to all remote environments
+func (s *EnvironmentService) SyncGlobalVariablesToAllAgents(ctx context.Context, vars []env.Variable) error {
+	var envs []models.Environment
+	if err := s.db.WithContext(ctx).Where("id != ?", "0").Find(&envs).Error; err != nil {
+		return fmt.Errorf("failed to get environments: %w", err)
+	}
+
+	body, err := json.Marshal(env.Summary{Variables: vars})
+	if err != nil {
+		return fmt.Errorf("failed to marshal variables: %w", err)
+	}
+
+	for _, env := range envs {
+		if env.Status != string(models.EnvironmentStatusOnline) {
+			continue
+		}
+
+		go func(e models.Environment) {
+			// Use a background context for the proxy request to avoid blocking the main request
+			bgCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+
+			_, status, err := s.ProxyRequest(bgCtx, e.ID, http.MethodPut, "/templates/variables", body)
+			if err != nil {
+				slog.WarnContext(bgCtx, "failed to sync global variables to agent", "environmentID", e.ID, "error", err)
+			} else if status != http.StatusOK {
+				slog.WarnContext(bgCtx, "failed to sync global variables to agent", "environmentID", e.ID, "status", status)
+			} else {
+				slog.DebugContext(bgCtx, "successfully synced global variables to agent", "environmentID", e.ID)
+			}
+		}(env)
+	}
 
 	return nil
 }

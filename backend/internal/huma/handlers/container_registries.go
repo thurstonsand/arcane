@@ -32,11 +32,11 @@ type ContainerRegistryPaginatedResponse struct {
 }
 
 type ListContainerRegistriesInput struct {
-	Search  string `query:"search" doc:"Search query"`
-	Sort    string `query:"sort" doc:"Column to sort by"`
-	Order   string `query:"order" default:"asc" doc:"Sort direction"`
-	Start   int    `query:"start" default:"0" doc:"Start index"`
-	Limit   int    `query:"limit" default:"20" doc:"Items per page"`
+	Search string `query:"search" doc:"Search query"`
+	Sort   string `query:"sort" doc:"Column to sort by"`
+	Order  string `query:"order" default:"asc" doc:"Sort direction"`
+	Start  int    `query:"start" default:"0" doc:"Start index"`
+	Limit  int    `query:"limit" default:"20" doc:"Items per page"`
 }
 
 type ListContainerRegistriesOutput struct {

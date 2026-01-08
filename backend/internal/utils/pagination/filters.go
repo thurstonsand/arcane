@@ -1,5 +1,7 @@
 package pagination
 
+import "strings"
+
 type FilterResult[T any] struct {
 	Items          []T
 	TotalCount     int64
@@ -46,7 +48,20 @@ func filterFn[T any](items []T, filters map[string]string, accessors []FilterAcc
 			found := false
 			for _, accessor := range accessors {
 				if accessor.Key == key {
-					if !accessor.Fn(item, value) {
+					if strings.Contains(value, ",") {
+						values := strings.Split(value, ",")
+						anyMatch := false
+						for _, v := range values {
+							v = strings.TrimSpace(v) // Trim space just in case
+							if accessor.Fn(item, v) {
+								anyMatch = true
+								break
+							}
+						}
+						if !anyMatch {
+							matches = false
+						}
+					} else if !accessor.Fn(item, value) {
 						matches = false
 					}
 					found = true

@@ -73,13 +73,13 @@ func TestWriteProjectFiles(t *testing.T) {
 		envPath := filepath.Join(projectDir, ".env")
 		content, err := os.ReadFile(envPath)
 		require.NoError(t, err)
-		assert.Equal(t, "", string(content))
+		assert.Empty(t, string(content))
 	})
 
 	t.Run("preserves existing env when envContent is nil", func(t *testing.T) {
 		envPath := filepath.Join(projectDir, ".env")
 		expected := "EXISTING=true"
-		err := os.WriteFile(envPath, []byte(expected), 0644)
+		err := os.WriteFile(envPath, []byte(expected), 0600)
 		require.NoError(t, err)
 
 		err = WriteProjectFiles(projectsRoot, projectDir, "services: { updated: true }", nil)

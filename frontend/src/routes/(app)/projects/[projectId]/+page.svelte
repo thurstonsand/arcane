@@ -662,7 +662,7 @@
 														action="base"
 														tone={selectedIncludeTab === includeFile.relativePath ? 'outline-primary' : 'ghost'}
 														size="sm"
-														class="flex-shrink-0"
+														class="shrink-0"
 														onclick={() => {
 															selectedIncludeTab =
 																selectedIncludeTab === includeFile.relativePath ? null : includeFile.relativePath;
@@ -678,7 +678,7 @@
 														action="base"
 														tone={selectedIncludeTab === `custom:${customFile.path}` ? 'outline-primary' : 'ghost'}
 														size="sm"
-														class="flex-shrink-0"
+														class="shrink-0"
 														onclick={() => {
 															selectedIncludeTab =
 																selectedIncludeTab === `custom:${customFile.path}` ? null : `custom:${customFile.path}`;
@@ -692,7 +692,7 @@
 												action="base"
 												tone="ghost"
 												size="sm"
-												class="text-muted-foreground flex-shrink-0"
+												class="text-muted-foreground shrink-0"
 												onclick={() => (showAddCustomFileDialog = true)}
 												icon={AddIcon}
 												customLabel="Add file"

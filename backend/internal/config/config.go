@@ -55,8 +55,8 @@ type Config struct {
 
 	FilePerm             os.FileMode `env:"FILE_PERM" default:"0644"`
 	DirPerm              os.FileMode `env:"DIR_PERM" default:"0755"`
-	AllowedExternalPaths string
-	GitWorkDir           string `env:"GIT_WORK_DIR" default:"data/git"`
+	AllowedExternalPaths string      `env:"ALLOWED_EXTERNAL_PATHS" default:""`
+	GitWorkDir           string      `env:"GIT_WORK_DIR" default:"data/git"`
 }
 
 func Load() *Config {

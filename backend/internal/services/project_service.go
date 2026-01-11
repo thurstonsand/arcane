@@ -50,11 +50,22 @@ func NewProjectService(db *database.DB, cfg *config.Config, settingsService *Set
 	}
 }
 
+var cachedExternalPaths struct {
+	settingValue string
+	config       projects.ExternalPathsConfig
+}
+
 func (s *ProjectService) getExternalPathsConfig(ctx context.Context) projects.ExternalPathsConfig {
 	allowedPaths := s.settingsService.GetStringSetting(ctx, "allowedExternalPaths", "")
-	return projects.ExternalPathsConfig{
+	if cachedExternalPaths.settingValue == allowedPaths {
+		return cachedExternalPaths.config
+	}
+	config := projects.ExternalPathsConfig{
 		AllowedPaths: projects.ParseAllowedPaths(allowedPaths),
 	}
+	cachedExternalPaths.settingValue = allowedPaths
+	cachedExternalPaths.config = config
+	return config
 }
 
 func (s *ProjectService) getPathMapper(ctx context.Context) (*pathmapper.PathMapper, error) {
@@ -368,7 +379,7 @@ func (s *ProjectService) enrichWithIncludeFiles(ctx context.Context, projectPath
 }
 
 func (s *ProjectService) enrichWithCustomFiles(ctx context.Context, projectPath string, resp *project.Details) {
-	customs, customErr := projects.ParseCustomFiles(projectPath)
+	customs, customErr := projects.ParseCustomFiles(projectPath, s.getExternalPathsConfig(ctx))
 	if customErr == nil {
 		var customFiles []project.CustomFile
 		for _, cf := range customs {

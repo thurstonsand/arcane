@@ -123,6 +123,9 @@ func resolveParentSymlinks(absPath string) (string, error) {
 
 // isWithinDirectory checks if evalPath is within the given directory.
 func isWithinDirectory(evalPath, dir string) bool {
+	if evalPath == dir {
+		return false // Explicitly not "within" - equal paths handled by caller
+	}
 	prefix := dir + string(filepath.Separator)
 	return strings.HasPrefix(evalPath+string(filepath.Separator), prefix)
 }
@@ -352,22 +355,25 @@ func WriteManifest(projectDir string, m *ArcaneManifest) error {
 }
 
 // ParseCustomFiles reads all custom files for a project.
-func ParseCustomFiles(projectDir string) ([]CustomFile, error) {
+func ParseCustomFiles(projectDir string, cfg ExternalPathsConfig) ([]CustomFile, error) {
 	manifest, err := ReadManifest(projectDir)
 	if err != nil {
 		return nil, err
 	}
 
-	absProjectDir, _ := filepath.Abs(projectDir)
 	var files []CustomFile
 
 	for _, path := range manifest.CustomFiles {
-		fullPath := path
-		if !filepath.IsAbs(path) {
-			fullPath = filepath.Join(absProjectDir, path)
+		// Validate path using the same rules as RegisterCustomFile
+		absPath, err := ValidateFilePath(projectDir, path, cfg, PathValidationOptions{
+			CheckReservedNames: false, // Don't block reading reserved names
+			AllowProjectDir:    false,
+		})
+		if err != nil {
+			continue // Skip invalid paths (manifest may be tampered)
 		}
 
-		content, err := os.ReadFile(fullPath)
+		content, err := os.ReadFile(absPath)
 		if os.IsNotExist(err) {
 			continue
 		}
@@ -385,17 +391,15 @@ func ParseCustomFiles(projectDir string) ([]CustomFile, error) {
 
 // manifestPath returns the path to store in manifest (relative if in project, absolute otherwise).
 func manifestPath(absPath, absProjectDir string) string {
-	if strings.HasPrefix(absPath, absProjectDir+string(filepath.Separator)) {
-		if rel, err := filepath.Rel(absProjectDir, absPath); err == nil {
-			return rel
-		}
+	if rel, err := filepath.Rel(absProjectDir, absPath); err == nil && !strings.HasPrefix(rel, "..") {
+		return rel
 	}
 	return absPath
 }
 
 // addToManifest adds a file path to the manifest if not already present.
 func addToManifest(projectDir, absPath string) error {
-	absProjectDir, _ := filepath.Abs(projectDir)
+	absProjectDir, _ := resolveAbsPath(projectDir)
 	mPath := manifestPath(absPath, absProjectDir)
 
 	manifest, err := ReadManifest(projectDir)
@@ -413,7 +417,8 @@ func addToManifest(projectDir, absPath string) error {
 	return WriteManifest(projectDir, manifest)
 }
 
-// RegisterCustomFile adds a file to the manifest. Creates empty file if it doesn't exist.
+// RegisterCustomFile adds a file to the manifest. Creates empty file only if it doesn't exist.
+// Existing files are registered without modification.
 func RegisterCustomFile(projectDir, filePath string, cfg ExternalPathsConfig) error {
 	absPath, err := ValidateFilePath(projectDir, filePath, cfg, PathValidationOptions{
 		CheckReservedNames: true,
@@ -423,7 +428,7 @@ func RegisterCustomFile(projectDir, filePath string, cfg ExternalPathsConfig) er
 		return err
 	}
 
-	// Create if doesn't exist
+	// Create only if file doesn't exist; existing files are registered as-is
 	if _, err := os.Stat(absPath); os.IsNotExist(err) {
 		if dir := filepath.Dir(absPath); dir != "." {
 			if err := os.MkdirAll(dir, common.DirPerm); err != nil {
@@ -433,6 +438,8 @@ func RegisterCustomFile(projectDir, filePath string, cfg ExternalPathsConfig) er
 		if err := os.WriteFile(absPath, []byte{}, common.FilePerm); err != nil {
 			return err
 		}
+	} else if err != nil {
+		return fmt.Errorf("failed to check file: %w", err)
 	}
 
 	return addToManifest(projectDir, absPath)

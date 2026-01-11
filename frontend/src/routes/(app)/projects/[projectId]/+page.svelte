@@ -258,7 +258,9 @@
 	}
 
 	async function handleAddCustomFile() {
-		if (!newCustomFileName.trim()) {
+		const trimmedPath = newCustomFileName.trim();
+
+		if (!trimmedPath) {
 			toast.error('Please enter a file name');
 			return;
 		}
@@ -270,7 +272,7 @@
 			return;
 		}
 
-		toast.success(`Added ${relativePath}`);
+		toast.success(`Added ${trimmedPath}`);
 		showAddCustomFileDialog = false;
 		newCustomFileName = '';
 		await invalidateAll();

@@ -233,3 +233,170 @@ func TestIncludeAndCustomFilesShareValidation(t *testing.T) {
 		t.Error("WriteCustomFile() should reject path outside project and allowed paths")
 	}
 }
+
+func TestParseCustomFilesSkipsNonExistentFiles(t *testing.T) {
+	t.Parallel()
+
+	projectDir := t.TempDir()
+
+	// Create manifest with both existing and non-existing files
+	manifest := ArcaneManifest{
+		CustomFiles: []string{"nonexistent.txt", "valid.txt"},
+	}
+	if err := WriteManifest(projectDir, &manifest); err != nil {
+		t.Fatalf("WriteManifest() failed: %v", err)
+	}
+
+	// Create only the valid file
+	validPath := filepath.Join(projectDir, "valid.txt")
+	if err := os.WriteFile(validPath, []byte("valid content"), 0644); err != nil {
+		t.Fatalf("failed to create valid file: %v", err)
+	}
+
+	// ParseCustomFiles should skip non-existent files
+	files, err := ParseCustomFiles(projectDir, ExternalPathsConfig{})
+	if err != nil {
+		t.Fatalf("ParseCustomFiles() returned error: %v", err)
+	}
+
+	// Should only contain the valid file
+	if len(files) != 1 {
+		t.Errorf("expected 1 file, got %d", len(files))
+	}
+	if len(files) > 0 && files[0].Path != "valid.txt" {
+		t.Errorf("expected valid.txt, got %s", files[0].Path)
+	}
+}
+
+func TestParseCustomFilesRejectsPathTraversal(t *testing.T) {
+	t.Parallel()
+
+	projectDir := t.TempDir()
+
+	// Create a malicious manifest with path traversal
+	manifest := ArcaneManifest{
+		CustomFiles: []string{"../../../etc/passwd", "valid.txt"},
+	}
+	if err := WriteManifest(projectDir, &manifest); err != nil {
+		t.Fatalf("WriteManifest() failed: %v", err)
+	}
+
+	// Create the valid file
+	validPath := filepath.Join(projectDir, "valid.txt")
+	if err := os.WriteFile(validPath, []byte("valid content"), 0644); err != nil {
+		t.Fatalf("failed to create valid file: %v", err)
+	}
+
+	// ParseCustomFiles should skip the malicious path
+	files, err := ParseCustomFiles(projectDir, ExternalPathsConfig{})
+	if err != nil {
+		t.Fatalf("ParseCustomFiles() returned error: %v", err)
+	}
+
+	// Should only contain the valid file, not the traversal path
+	if len(files) != 1 {
+		t.Errorf("expected 1 file, got %d", len(files))
+	}
+	if len(files) > 0 && files[0].Path != "valid.txt" {
+		t.Errorf("expected valid.txt, got %s", files[0].Path)
+	}
+}
+
+func TestParseCustomFilesAllowsExternalPaths(t *testing.T) {
+	t.Parallel()
+
+	projectDir := t.TempDir()
+	externalDir := t.TempDir()
+
+	// Create an external file
+	externalFile := filepath.Join(externalDir, "external.txt")
+	if err := os.WriteFile(externalFile, []byte("external content"), 0644); err != nil {
+		t.Fatalf("failed to create external file: %v", err)
+	}
+
+	// Create manifest with external path
+	manifest := ArcaneManifest{
+		CustomFiles: []string{externalFile},
+	}
+	if err := WriteManifest(projectDir, &manifest); err != nil {
+		t.Fatalf("WriteManifest() failed: %v", err)
+	}
+
+	// Without allowed paths, should be rejected
+	files, err := ParseCustomFiles(projectDir, ExternalPathsConfig{})
+	if err != nil {
+		t.Fatalf("ParseCustomFiles() returned error: %v", err)
+	}
+	if len(files) != 0 {
+		t.Errorf("expected 0 files without allowed paths, got %d", len(files))
+	}
+
+	// With allowed paths, should be included
+	files, err = ParseCustomFiles(projectDir, ExternalPathsConfig{AllowedPaths: []string{externalDir}})
+	if err != nil {
+		t.Fatalf("ParseCustomFiles() returned error: %v", err)
+	}
+	if len(files) != 1 {
+		t.Errorf("expected 1 file with allowed paths, got %d", len(files))
+	}
+}
+
+func TestRegisterCustomFileRejectsPathTraversal(t *testing.T) {
+	t.Parallel()
+
+	projectDir := t.TempDir()
+
+	// Path traversal should be rejected at registration time
+	err := RegisterCustomFile(projectDir, "../../../etc/passwd", ExternalPathsConfig{})
+	if err == nil {
+		t.Error("RegisterCustomFile() should reject path traversal")
+	}
+}
+
+func TestRegisterCustomFileDoesNotOverwriteExisting(t *testing.T) {
+	t.Parallel()
+
+	projectDir := t.TempDir()
+	existingContent := "existing content that should not be overwritten"
+	filePath := filepath.Join(projectDir, "existing.txt")
+
+	// Create an existing file with content
+	if err := os.WriteFile(filePath, []byte(existingContent), 0644); err != nil {
+		t.Fatalf("failed to create existing file: %v", err)
+	}
+
+	// Register the existing file
+	if err := RegisterCustomFile(projectDir, "existing.txt", ExternalPathsConfig{}); err != nil {
+		t.Fatalf("RegisterCustomFile() failed: %v", err)
+	}
+
+	// Verify content was not overwritten
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		t.Fatalf("failed to read file: %v", err)
+	}
+	if string(content) != existingContent {
+		t.Errorf("file content was modified: got %q, want %q", string(content), existingContent)
+	}
+}
+
+func TestIsWithinDirectoryEqualityCase(t *testing.T) {
+	t.Parallel()
+
+	dir := "/project"
+
+	// Equal paths should return false (not "within")
+	if isWithinDirectory(dir, dir) {
+		t.Error("isWithinDirectory() should return false for equal paths")
+	}
+
+	// Subdirectory should return true
+	if !isWithinDirectory("/project/subdir", dir) {
+		t.Error("isWithinDirectory() should return true for subdirectory")
+	}
+
+	// Sibling directory should return false
+	if isWithinDirectory("/project2", dir) {
+		t.Error("isWithinDirectory() should return false for sibling directory")
+	}
+}

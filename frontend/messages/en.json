@@ -181,6 +181,8 @@
 	"_comment_common_crud": "=== COMMON - CRUD MESSAGES ===",
 	"common_create_success": "{resource} created successfully",
 	"common_create_failed": "Failed to create {resource}",
+	"common_add_success": "{resource} added successfully",
+	"common_add_failed": "Failed to add {resource}",
 	"common_update_success": "{resource} updated successfully",
 	"common_update_failed": "Failed to update {resource}",
 	"common_delete_success": "{resource} deleted successfully",

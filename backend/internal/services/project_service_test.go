@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
 
-	"github.com/getarcaneapp/arcane/backend/internal/config"
 	"github.com/getarcaneapp/arcane/backend/internal/database"
 	"github.com/getarcaneapp/arcane/backend/internal/models"
 )
@@ -30,8 +29,7 @@ func TestProjectService_GetProjectFromDatabaseByID(t *testing.T) {
 
 	// Setup dependencies
 	settingsService, _ := NewSettingsService(ctx, db)
-	cfg := &config.Config{}
-	svc := NewProjectService(db, cfg, settingsService, nil, nil, nil)
+	svc := NewProjectService(db, settingsService, nil, nil, nil)
 
 	// Create test project
 	proj := &models.Project{
@@ -148,8 +146,7 @@ func TestProjectService_CalculateProjectStatus(t *testing.T) {
 func TestProjectService_UpdateProjectStatusInternal(t *testing.T) {
 	db := setupProjectTestDB(t)
 	ctx := context.Background()
-	cfg := &config.Config{}
-	svc := NewProjectService(db, cfg, nil, nil, nil, nil)
+	svc := NewProjectService(db, nil, nil, nil, nil)
 
 	proj := &models.Project{
 		BaseModel: models.BaseModel{

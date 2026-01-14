@@ -17,7 +17,6 @@ import (
 	"github.com/docker/compose/v5/pkg/api"
 	"github.com/docker/docker/api/types/container"
 	"github.com/getarcaneapp/arcane/backend/internal/common"
-	"github.com/getarcaneapp/arcane/backend/internal/config"
 	"github.com/getarcaneapp/arcane/backend/internal/database"
 	"github.com/getarcaneapp/arcane/backend/internal/models"
 	"github.com/getarcaneapp/arcane/backend/internal/utils"
@@ -40,7 +39,7 @@ type ProjectService struct {
 	dockerService   *DockerClientService
 }
 
-func NewProjectService(db *database.DB, cfg *config.Config, settingsService *SettingsService, eventService *EventService, imageService *ImageService, dockerService *DockerClientService) *ProjectService {
+func NewProjectService(db *database.DB, settingsService *SettingsService, eventService *EventService, imageService *ImageService, dockerService *DockerClientService) *ProjectService {
 	return &ProjectService{
 		db:              db,
 		settingsService: settingsService,

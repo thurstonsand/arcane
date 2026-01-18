@@ -116,7 +116,6 @@
 	let mobileFileDrawerOpen = $state(false);
 	const minTreePaneWidth = 180;
 	const minEditorPaneWidth = 280;
-	const minEditorSplitSize = 280;
 
 	// Split view: left and right pane files (desktop)
 	let leftPaneFile = $state<string>('compose');
@@ -513,37 +512,9 @@
 	{/if}
 {/snippet}
 
-{#snippet editorPane()}
-	<div class="flex h-full min-h-0 flex-1 flex-col">
-		{#if isSplitView && rightPaneFile}
-			<Resizable.PaneGroup
-				orientation="horizontal"
-				persistKey={`arcane.compose.resizable:${project?.id}:editors`}
-				onLayoutChange={persistPrefs}
-				class="flex h-full min-h-0 flex-1"
-			>
-				<Resizable.Pane id="left-editor" minSize={minEditorSplitSize} defaultSize={400} class="flex min-h-0 flex-col">
-					{@render fileEditor(leftPaneFile, false)}
-				</Resizable.Pane>
-
-				<Resizable.Handle index={0} collapsible="after" />
-
-				<Resizable.Pane id="right-editor" minSize={minEditorSplitSize} flex collapsible class="flex min-h-0 flex-col">
-					{#if rightPaneFile}
-						{@render fileEditor(rightPaneFile, true)}
-					{/if}
-				</Resizable.Pane>
-			</Resizable.PaneGroup>
-		{:else}
-			{@render fileEditor(leftPaneFile, false)}
-		{/if}
-	</div>
-{/snippet}
-
 {#snippet mobileEditorPane()}
 	<div class="flex h-full min-h-0 flex-1 flex-col gap-4">
 		{#if mobileShowsMainFiles}
-			<!-- Show both compose and env stacked when either main file is selected -->
 			<div class="flex min-h-0 flex-1 flex-col">
 				{@render fileEditor('compose', false)}
 			</div>
@@ -551,7 +522,6 @@
 				{@render fileEditor('env', false)}
 			</div>
 		{:else}
-			<!-- Show single editor for custom/include files -->
 			{@render fileEditor(mobileSelectedFile, false)}
 		{/if}
 	</div>
@@ -719,7 +689,6 @@
 							</div>
 						</Alert.Root>
 					{/if}
-					<!-- Mobile: Responsive dialog for file tree -->
 					<ResponsiveDialog bind:open={mobileFileDrawerOpen} title={m.project_files()} variant="sheet">
 						{#snippet trigger()}
 							<Button variant="outline" size="sm" class="mb-4 gap-2 lg:hidden">
@@ -983,13 +952,26 @@
 
 							<Resizable.Handle index={0} collapsible="before" />
 
-							<Resizable.Pane id="editor" minSize={minEditorPaneWidth} flex collapsible class="flex min-h-0 flex-col">
-								{@render editorPane()}
+							<Resizable.Pane id="left-editor" minSize={minEditorPaneWidth} defaultSize={560} flex class="flex min-h-0 flex-col">
+								{@render fileEditor(leftPaneFile, false)}
 							</Resizable.Pane>
+
+							{#if isSplitView && rightPaneFile}
+								<Resizable.Handle index={1} collapsible="after" />
+
+								<Resizable.Pane
+									id="right-editor"
+									minSize={minEditorPaneWidth}
+									defaultSize={280}
+									collapsible
+									class="flex min-h-0 flex-col"
+								>
+									{@render fileEditor(rightPaneFile, true)}
+								</Resizable.Pane>
+							{/if}
 						</Resizable.PaneGroup>
 					</div>
 
-					<!-- Mobile: Stacked compose/env or single editor view -->
 					<div class="flex min-h-0 flex-1 flex-col lg:hidden">
 						{@render mobileEditorPane()}
 					</div>

@@ -248,8 +248,8 @@ export class ResizableGroup implements ResizableGroupState {
 
 	registerPane(config: PaneConfig) {
 		this.panes = [...this.panes, config];
-		if (!this.sizes.has(config.id) && !config.flex) {
-			this.sizes.set(config.id, config.defaultSize ?? config.minSize);
+		if (!this.sizes.has(config.id) && config.defaultSize !== undefined) {
+			this.sizes.set(config.id, config.defaultSize);
 			this.sizes = new Map(this.sizes);
 		}
 	}

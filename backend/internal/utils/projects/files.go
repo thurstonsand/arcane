@@ -1,7 +1,6 @@
 package projects
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -13,17 +12,9 @@ import (
 	"github.com/goccy/go-yaml"
 )
 
-// ArcaneManifest is the project metadata file, extensible for future features.
-type ArcaneManifest struct {
-	CustomFiles []string `json:"customFiles,omitempty"`
-}
-
-// ArcaneManifestName is the project metadata file name.
-const ArcaneManifestName = ".arcane"
-
 var reservedRootFileNames = []string{
 	"compose.yaml", "compose.yml", "docker-compose.yaml", "docker-compose.yml",
-	".env", ArcaneManifestName,
+	".env",
 }
 
 const (
@@ -278,78 +269,34 @@ func WriteIncludeFile(projectDir, includePath, content string, allowedPaths []st
 	return writeFileWithDir(absPath, content)
 }
 
-// ReadManifest reads the .arcane manifest file.
-func ReadManifest(projectDir string) (*ArcaneManifest, error) {
-	data, err := os.ReadFile(filepath.Join(projectDir, ArcaneManifestName))
-	if err != nil {
-		if os.IsNotExist(err) {
-			return &ArcaneManifest{}, nil
-		}
-		return nil, err
-	}
-	var m ArcaneManifest
-	if err := json.Unmarshal(data, &m); err != nil {
-		return nil, err
-	}
-	return &m, nil
-}
-
-// WriteManifest writes the .arcane manifest file.
-func WriteManifest(projectDir string, m *ArcaneManifest) error {
-	path := filepath.Join(projectDir, ArcaneManifestName)
-	if len(m.CustomFiles) == 0 {
-		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
-			return err
-		}
-		return nil
-	}
-	data, err := json.MarshalIndent(m, "", "  ")
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(path, append(data, '\n'), common.FilePerm)
-}
-
-// manifestPath returns the path to store in manifest (relative if in project, absolute otherwise).
-func manifestPath(absPath, absProjectDir string) string {
+// normalizePath returns a normalized path for storage (relative if within project, absolute otherwise).
+func normalizePath(absPath, absProjectDir string) string {
 	if rel, err := filepath.Rel(absProjectDir, absPath); err == nil && !strings.HasPrefix(rel, "..") {
 		return rel
 	}
 	return absPath
 }
 
-func addToManifest(projectDir, absPath string) error {
-	absProjectDir, _ := resolveAbsPath(projectDir)
-	mPath := manifestPath(absPath, absProjectDir)
-
-	manifest, err := ReadManifest(projectDir)
+// ValidateAndNormalizePath validates a file path and returns the normalized path for storage.
+// The normalized path is relative if within the project directory, absolute otherwise.
+func ValidateAndNormalizePath(projectDir, filePath string, allowedPaths []string, checkReserved bool) (string, error) {
+	absPath, err := validatePath(projectDir, filePath, allowedPaths, checkReserved)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	for _, f := range manifest.CustomFiles {
-		if f == mPath {
-			return nil
-		}
-	}
-
-	manifest.CustomFiles = append(manifest.CustomFiles, mPath)
-	return WriteManifest(projectDir, manifest)
+	absProjectDir, _ := resolveAbsPath(projectDir)
+	return normalizePath(absPath, absProjectDir), nil
 }
 
-// ParseCustomFiles reads all custom files for a project.
-// Security: Validates paths against allowed external paths to prevent manifest tampering attacks.
-func ParseCustomFiles(projectDir string, allowedPaths []string) ([]project.CustomFile, error) {
-	manifest, err := ReadManifest(projectDir)
-	if err != nil {
-		return nil, err
-	}
-
+// ReadCustomFileContents reads the contents of custom files given their paths from the database.
+// Security: Validates paths against allowed external paths.
+func ReadCustomFileContents(projectDir string, filePaths []string, allowedPaths []string) ([]project.CustomFile, error) {
 	var files []project.CustomFile
-	for _, path := range manifest.CustomFiles {
+	for _, path := range filePaths {
 		absPath, err := validatePath(projectDir, path, allowedPaths, false)
 		if err != nil {
-			continue // Skip invalid paths (manifest may be tampered)
+			continue // Skip invalid paths
 		}
 
 		content, err := readFileWithPlaceholder(absPath, PlaceholderGeneric)
@@ -365,16 +312,7 @@ func ParseCustomFiles(projectDir string, allowedPaths []string) ([]project.Custo
 	return files, nil
 }
 
-// RegisterCustomFile adds a file to the manifest without creating it on disk.
-func RegisterCustomFile(projectDir, filePath string, allowedPaths []string) error {
-	absPath, err := validatePath(projectDir, filePath, allowedPaths, true)
-	if err != nil {
-		return err
-	}
-	return addToManifest(projectDir, absPath)
-}
-
-// WriteCustomFile writes content to a file and adds it to the manifest.
+// WriteCustomFile writes content to a custom file.
 func WriteCustomFile(projectDir, filePath, content string, allowedPaths []string) error {
 	absPath, err := validatePath(projectDir, filePath, allowedPaths, true)
 	if err != nil {
@@ -383,41 +321,18 @@ func WriteCustomFile(projectDir, filePath, content string, allowedPaths []string
 	if err := writeFileWithDir(absPath, content); err != nil {
 		return fmt.Errorf("failed to write custom file: %w", err)
 	}
-	return addToManifest(projectDir, absPath)
+	return nil
 }
 
-// RemoveCustomFile removes a file from the manifest and optionally deletes it from disk.
-func RemoveCustomFile(projectDir, filePath string, allowedPaths []string, deleteFromDisk bool) error {
+// DeleteCustomFile deletes a custom file from disk.
+func DeleteCustomFile(projectDir, filePath string, allowedPaths []string) error {
 	absPath, err := validatePath(projectDir, filePath, allowedPaths, false)
 	if err != nil {
 		return fmt.Errorf("invalid file path: %w", err)
 	}
 
-	absProjectDir, _ := resolveAbsPath(projectDir)
-	mPath := manifestPath(absPath, absProjectDir)
-
-	manifest, err := ReadManifest(projectDir)
-	if err != nil {
-		return err
+	if err := os.Remove(absPath); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("failed to delete file from disk: %w", err)
 	}
-
-	var updated []string
-	for _, f := range manifest.CustomFiles {
-		if f != mPath {
-			updated = append(updated, f)
-		}
-	}
-	manifest.CustomFiles = updated
-
-	if err := WriteManifest(projectDir, manifest); err != nil {
-		return err
-	}
-
-	if deleteFromDisk {
-		if err := os.Remove(absPath); err != nil && !os.IsNotExist(err) {
-			return fmt.Errorf("failed to delete file from disk: %w", err)
-		}
-	}
-
 	return nil
 }

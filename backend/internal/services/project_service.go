@@ -1199,18 +1199,18 @@ func (s *ProjectService) UpdateProjectCustomFile(ctx context.Context, projectID,
 	return nil
 }
 
-// RemoveProjectCustomFile removes a custom file from a project's manifest (does not delete from disk).
-func (s *ProjectService) RemoveProjectCustomFile(ctx context.Context, projectID, filePath string) error {
+// RemoveProjectCustomFile removes a custom file from a project's manifest and optionally deletes it from disk.
+func (s *ProjectService) RemoveProjectCustomFile(ctx context.Context, projectID, filePath string, deleteFromDisk bool) error {
 	proj, err := s.GetProjectFromDatabaseByID(ctx, projectID)
 	if err != nil {
 		return err
 	}
 
-	if err := projects.RemoveCustomFile(proj.Path, filePath, s.getAllowedExternalPaths(ctx)); err != nil {
+	if err := projects.RemoveCustomFile(proj.Path, filePath, s.getAllowedExternalPaths(ctx), deleteFromDisk); err != nil {
 		return fmt.Errorf("failed to remove custom file: %w", err)
 	}
 
-	slog.InfoContext(ctx, "project custom file removed", "projectID", proj.ID, "file", filePath)
+	slog.InfoContext(ctx, "project custom file removed", "projectID", proj.ID, "file", filePath, "deletedFromDisk", deleteFromDisk)
 	return nil
 }
 

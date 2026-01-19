@@ -17,7 +17,7 @@
 		FileSymlinkIcon,
 		FilePenIcon,
 		AddIcon,
-		UnlinkIcon,
+		TrashIcon,
 		AlertIcon,
 		FolderOpenIcon,
 		CloseIcon
@@ -47,6 +47,7 @@
 	import { projectService } from '$lib/services/project-service';
 	import { gitOpsSyncService } from '$lib/services/gitops-sync-service';
 	import { environmentStore } from '$lib/stores/environment.store.svelte';
+	import { openConfirmDialog } from '$lib/components/confirm-dialog';
 	import { RefreshIcon } from '$lib/icons';
 
 	let { data } = $props();
@@ -363,28 +364,44 @@
 		await invalidateAll();
 	}
 
-	async function handleRemoveCustomFile(filePath: string) {
-		const result = await tryCatch(projectService.removeProjectCustomFile(projectId, filePath));
-		if (result.error) {
-			toast.error(`Failed to remove file: ${result.error.message || 'Unknown error'}`);
-			return;
-		}
+	function handleRemoveCustomFile(filePath: string) {
+		openConfirmDialog({
+			title: m.project_custom_file_remove_title(),
+			message: m.project_custom_file_remove_message({ path: filePath }),
+			confirm: {
+				label: m.common_remove(),
+				destructive: true,
+				action: async (checkboxStates) => {
+					const deleteFromDisk = checkboxStates['deleteFromDisk'] === true;
+					const result = await tryCatch(
+						projectService.removeProjectCustomFile(projectId, filePath, deleteFromDisk)
+					);
+					if (result.error) {
+						toast.error(`Failed to remove file: ${result.error.message || 'Unknown error'}`);
+						return;
+					}
 
-		// Remove from local state
-		delete customFilesState[filePath];
-		delete originalCustomFiles[filePath];
+					// Remove from local state
+					delete customFilesState[filePath];
+					delete originalCustomFiles[filePath];
 
-		// Reset panes if the removed file was active
-		const customFileKey = `custom:${filePath}`;
-		if (leftPaneFile === customFileKey) {
-			leftPaneFile = 'compose';
-		}
-		if (rightPaneFile === customFileKey) {
-			rightPaneFile = null;
-		}
+					// Reset panes if the removed file was active
+					const customFileKey = `custom:${filePath}`;
+					if (leftPaneFile === customFileKey) {
+						leftPaneFile = 'compose';
+					}
+					if (rightPaneFile === customFileKey) {
+						rightPaneFile = null;
+					}
 
-		toast.success(`Removed ${filePath}`);
-		await invalidateAll();
+					toast.success(m.project_custom_file_removed({ path: filePath }));
+					await invalidateAll();
+				}
+			},
+			checkboxes: [
+				{ id: 'deleteFromDisk', label: m.project_custom_file_delete_from_disk(), initialState: false }
+			]
+		});
 	}
 
 	function saveNameIfChanged() {
@@ -484,11 +501,11 @@
 						<Button
 							variant="ghost"
 							size="icon"
-							class="text-muted-foreground hover:text-foreground size-7"
+							class="text-muted-foreground hover:text-destructive size-7"
 							onclick={() => handleRemoveCustomFile(customFile.path)}
-							title={m.project_custom_file_unlink()}
+							title={m.common_remove()}
 						>
-							<UnlinkIcon class="size-4" />
+							<TrashIcon class="size-4" />
 						</Button>
 						{@render closeButton()}
 					</div>
@@ -931,7 +948,7 @@
 																{/if}
 																<ContextMenu.Separator />
 																<ContextMenu.Item onclick={() => handleRemoveCustomFile(customFile.path)} variant="destructive">
-																	{m.project_custom_file_unlink()}
+																	{m.common_remove()}
 																</ContextMenu.Item>
 															</ContextMenu.Content>
 														</ContextMenu.Root>

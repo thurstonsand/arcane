@@ -355,7 +355,7 @@ func RegisterProjects(api huma.API, projectService *services.ProjectService) {
 		Method:      http.MethodDelete,
 		Path:        "/environments/{id}/projects/{projectId}/custom-files",
 		Summary:     "Remove project custom file",
-		Description: "Remove a custom file from a project (does not delete from disk)",
+		Description: "Remove a custom file from a project. Optionally delete the file from disk.",
 		Tags:        []string{"Projects"},
 		Security: []map[string][]string{
 			{"BearerAuth": {}},
@@ -768,7 +768,7 @@ func (h *ProjectHandler) UpdateProjectCustomFile(ctx context.Context, input *Upd
 	}, nil
 }
 
-// RemoveProjectCustomFile removes a custom file from a project's manifest (does not delete from disk).
+// RemoveProjectCustomFile removes a custom file from a project's manifest and optionally deletes it from disk.
 func (h *ProjectHandler) RemoveProjectCustomFile(ctx context.Context, input *RemoveProjectCustomFileInput) (*RemoveProjectCustomFileOutput, error) {
 	if h.projectService == nil {
 		return nil, huma.Error500InternalServerError("service not available")
@@ -778,7 +778,7 @@ func (h *ProjectHandler) RemoveProjectCustomFile(ctx context.Context, input *Rem
 		return nil, huma.Error400BadRequest((&common.ProjectIDRequiredError{}).Error())
 	}
 
-	if err := h.projectService.RemoveProjectCustomFile(ctx, input.ProjectID, input.Body.Path); err != nil {
+	if err := h.projectService.RemoveProjectCustomFile(ctx, input.ProjectID, input.Body.Path, input.Body.DeleteFromDisk); err != nil {
 		return nil, huma.Error400BadRequest((&common.ProjectUpdateError{Err: err}).Error())
 	}
 

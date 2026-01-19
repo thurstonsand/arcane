@@ -113,6 +113,11 @@ type RemoveCustomFile struct {
 	//
 	// Required: true
 	Path string `json:"path" binding:"required"`
+
+	// DeleteFromDisk indicates if the file should also be deleted from disk.
+	//
+	// Required: false
+	DeleteFromDisk bool `json:"deleteFromDisk,omitempty"`
 }
 
 // RuntimeService contains live container status information for a service.

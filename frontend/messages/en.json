@@ -1780,5 +1780,9 @@
 	"project_custom_file_path_label": "File Path",
 	"project_custom_file_path_placeholder": "config/my-file.yaml",
 	"project_custom_file_unlink": "Unlink file",
-	"project_custom_file_add_button": "Add file"
+	"project_custom_file_add_button": "Add file",
+	"project_custom_file_remove_title": "Remove Custom File",
+	"project_custom_file_remove_message": "Are you sure you want to remove \"{path}\" from this project?",
+	"project_custom_file_delete_from_disk": "Also delete file from disk",
+	"project_custom_file_removed": "Removed {path}"
 }

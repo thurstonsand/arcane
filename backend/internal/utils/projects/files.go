@@ -396,8 +396,8 @@ func WriteCustomFile(projectDir, filePath, content string, allowedPaths []string
 	return addToManifest(projectDir, absPath)
 }
 
-// RemoveCustomFile removes a file from the manifest (does not delete from disk).
-func RemoveCustomFile(projectDir, filePath string, allowedPaths []string) error {
+// RemoveCustomFile removes a file from the manifest and optionally deletes it from disk.
+func RemoveCustomFile(projectDir, filePath string, allowedPaths []string, deleteFromDisk bool) error {
 	absPath, err := validatePath(projectDir, filePath, allowedPaths, false)
 	if err != nil {
 		return fmt.Errorf("invalid file path: %w", err)
@@ -418,5 +418,16 @@ func RemoveCustomFile(projectDir, filePath string, allowedPaths []string) error 
 		}
 	}
 	manifest.CustomFiles = updated
-	return WriteManifest(projectDir, manifest)
+
+	if err := WriteManifest(projectDir, manifest); err != nil {
+		return err
+	}
+
+	if deleteFromDisk {
+		if err := os.Remove(absPath); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("failed to delete file from disk: %w", err)
+		}
+	}
+
+	return nil
 }

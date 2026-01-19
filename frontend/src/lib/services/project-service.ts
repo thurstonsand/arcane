@@ -124,9 +124,9 @@ export class ProjectService extends BaseAPIService {
 		return this.handleResponse(this.api.put(`/environments/${envId}/projects/${projectId}/custom-files`, payload));
 	}
 
-	async removeProjectCustomFile(projectId: string, path: string): Promise<void> {
+	async removeProjectCustomFile(projectId: string, path: string, deleteFromDisk = false): Promise<void> {
 		const envId = await environmentStore.getCurrentEnvironmentId();
-		const payload = { path };
+		const payload = { path, deleteFromDisk };
 		await this.handleResponse(
 			this.api.delete(`/environments/${envId}/projects/${projectId}/custom-files`, { data: payload })
 		);

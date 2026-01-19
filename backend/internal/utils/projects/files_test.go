@@ -94,89 +94,6 @@ func TestWriteIncludeFileRejectsSymlinkEscape(t *testing.T) {
 	}
 }
 
-func TestValidatePathWithinProject(t *testing.T) {
-	t.Parallel()
-
-	projectDir := t.TempDir()
-
-	tests := []struct {
-		name      string
-		filePath  string
-		wantError bool
-	}{
-		{"relative path within project", "subdir/file.txt", false},
-		{"nested path within project", "a/b/c/file.txt", false},
-		{"path traversal attempt", "../outside.txt", true},
-		{"absolute path outside project", "/tmp/outside.txt", true},
-		{"empty path", "", true},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			_, err := validatePath(projectDir, tt.filePath, nil, false)
-			if (err != nil) != tt.wantError {
-				t.Errorf("validatePath() error = %v, wantError %v", err, tt.wantError)
-			}
-		})
-	}
-}
-
-func TestValidatePathWithAllowedExternalPaths(t *testing.T) {
-	t.Parallel()
-
-	projectDir := t.TempDir()
-	allowedDir := t.TempDir()
-
-	allowedPaths := []string{allowedDir}
-
-	tests := []struct {
-		name      string
-		filePath  string
-		wantError bool
-	}{
-		{"path within allowed directory", filepath.Join(allowedDir, "file.txt"), false},
-		{"path within project", "subdir/file.txt", false},
-		{"path outside both", "/tmp/notallowed/file.txt", true},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			_, err := validatePath(projectDir, tt.filePath, allowedPaths, false)
-			if (err != nil) != tt.wantError {
-				t.Errorf("validatePath() error = %v, wantError %v", err, tt.wantError)
-			}
-		})
-	}
-}
-
-func TestValidatePathReservedNames(t *testing.T) {
-	t.Parallel()
-
-	projectDir := t.TempDir()
-
-	tests := []struct {
-		name          string
-		filePath      string
-		checkReserved bool
-		wantError     bool
-	}{
-		{"compose.yaml at root with check", "compose.yaml", true, true},
-		{"compose.yaml at root without check", "compose.yaml", false, false},
-		{"compose.yaml in subdir with check", "subdir/compose.yaml", true, false},
-		{".env at root with check", ".env", true, true},
-		{".arcane at root with check", ".arcane", true, true},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			_, err := validatePath(projectDir, tt.filePath, nil, tt.checkReserved)
-			if (err != nil) != tt.wantError {
-				t.Errorf("validatePath() error = %v, wantError %v", err, tt.wantError)
-			}
-		})
-	}
-}
-
 func TestWriteCustomFileValidation(t *testing.T) {
 	t.Parallel()
 
@@ -192,6 +109,29 @@ func TestWriteCustomFileValidation(t *testing.T) {
 	err = WriteCustomFile(projectDir, "subdir/file.txt", "content", nil)
 	if err != nil {
 		t.Errorf("WriteCustomFile() failed for valid path: %v", err)
+	}
+}
+
+func TestWriteCustomFileReservedNames(t *testing.T) {
+	t.Parallel()
+
+	projectDir := t.TempDir()
+
+	// Reserved names at root should be rejected
+	err := WriteCustomFile(projectDir, "compose.yaml", "content", nil)
+	if err == nil {
+		t.Error("WriteCustomFile() should reject reserved file name at root")
+	}
+
+	err = WriteCustomFile(projectDir, ".env", "content", nil)
+	if err == nil {
+		t.Error("WriteCustomFile() should reject .env at root")
+	}
+
+	// Reserved names in subdirs should be allowed
+	err = WriteCustomFile(projectDir, "subdir/compose.yaml", "content", nil)
+	if err != nil {
+		t.Errorf("WriteCustomFile() should allow reserved name in subdir: %v", err)
 	}
 }
 
@@ -367,6 +307,24 @@ func TestValidateAndNormalizePathReturnsAbsoluteForExternal(t *testing.T) {
 	}
 }
 
+func TestValidateAndNormalizePathReservedNames(t *testing.T) {
+	t.Parallel()
+
+	projectDir := t.TempDir()
+
+	// With checkReserved=true, should reject reserved names at root
+	_, err := ValidateAndNormalizePath(projectDir, "compose.yaml", nil, true)
+	if err == nil {
+		t.Error("ValidateAndNormalizePath() should reject reserved name with checkReserved=true")
+	}
+
+	// With checkReserved=false, should allow reserved names
+	_, err = ValidateAndNormalizePath(projectDir, "compose.yaml", nil, false)
+	if err != nil {
+		t.Errorf("ValidateAndNormalizePath() should allow reserved name with checkReserved=false: %v", err)
+	}
+}
+
 func TestDeleteCustomFile(t *testing.T) {
 	t.Parallel()
 
@@ -383,23 +341,5 @@ func TestDeleteCustomFile(t *testing.T) {
 
 	if _, err := os.Stat(filePath); !os.IsNotExist(err) {
 		t.Error("DeleteCustomFile() should delete file from disk")
-	}
-}
-
-func TestIsWithinDirectoryEqualityCase(t *testing.T) {
-	t.Parallel()
-
-	dir := "/project"
-
-	if isWithinDirectory(dir, dir) {
-		t.Error("isWithinDirectory() should return false for equal paths")
-	}
-
-	if !isWithinDirectory("/project/subdir", dir) {
-		t.Error("isWithinDirectory() should return true for subdirectory")
-	}
-
-	if isWithinDirectory("/project2", dir) {
-		t.Error("isWithinDirectory() should return false for sibling directory")
 	}
 }

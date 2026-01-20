@@ -523,9 +523,8 @@ export class ResizableGroup implements ResizableGroupState {
 
 		const pos = this.orientation === 'horizontal' ? event.clientX : event.clientY;
 		const delta = pos - this.lastMovePos;
+		if (delta === 0) return;
 		this.lastMovePos = pos;
-
-		if (Math.abs(delta) < 1) return;
 
 		const { sizes, mins } = this.measurePanes();
 		const newSizes = [...sizes];

@@ -2,10 +2,8 @@
 	import type { Project } from '$lib/types/project.type';
 	import * as Tabs from '$lib/components/ui/tabs/index.js';
 	import * as TreeView from '$lib/components/ui/tree-view/index.js';
-	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import * as Card from '$lib/components/ui/card';
 	import * as Alert from '$lib/components/ui/alert/index.js';
-	import { Input } from '$lib/components/ui/input/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
 	import {
@@ -77,8 +75,9 @@
 	let originalIncludeFiles = $state<Record<string, string>>({});
 	let customFilesState = $state<Record<string, string>>({});
 	let originalCustomFiles = $state<Record<string, string>>({});
-	let showAddCustomFileDialog = $state(false);
+	let isAddingCustomFile = $state(false);
 	let newCustomFileName = $state('');
+	let newFileInputRef = $state<HTMLInputElement | null>(null);
 
 	const formSchema = z.object({
 		name: z
@@ -343,11 +342,25 @@
 		});
 	}
 
+	function startAddingCustomFile() {
+		isAddingCustomFile = true;
+		newCustomFileName = '';
+		// Focus the input after it renders
+		requestAnimationFrame(() => {
+			newFileInputRef?.focus();
+		});
+	}
+
+	function cancelAddingCustomFile() {
+		isAddingCustomFile = false;
+		newCustomFileName = '';
+	}
+
 	async function handleAddCustomFile() {
 		const filePath = newCustomFileName.trim();
 
 		if (!filePath) {
-			toast.error('Please enter a file name');
+			cancelAddingCustomFile();
 			return;
 		}
 
@@ -358,9 +371,19 @@
 		}
 
 		toast.success(`Added ${filePath}`);
-		showAddCustomFileDialog = false;
+		isAddingCustomFile = false;
 		newCustomFileName = '';
 		await invalidateAll();
+	}
+
+	function handleNewFileKeydown(e: KeyboardEvent) {
+		if (e.key === 'Enter') {
+			e.preventDefault();
+			handleAddCustomFile();
+		} else if (e.key === 'Escape') {
+			e.preventDefault();
+			cancelAddingCustomFile();
+		}
 	}
 
 	function handleRemoveCustomFile(filePath: string) {
@@ -793,16 +816,27 @@
 										</TreeView.File>
 									{/each}
 								{/if}
-								<button
-									class="hover:bg-accent text-muted-foreground hover:text-foreground flex min-h-[44px] w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2.5 text-base transition-colors"
-									onclick={() => {
-										mobileFileDrawerOpen = false;
-										showAddCustomFileDialog = true;
-									}}
-								>
-									<AddIcon class="size-5" />
-									<span>{m.project_custom_file_add_button()}...</span>
-								</button>
+								{#if isAddingCustomFile}
+									<div class="flex min-h-[44px] items-center gap-2 rounded-lg px-3 py-2.5">
+										<FilePenIcon class="size-5 shrink-0 text-purple-500" />
+										<input
+											bind:this={newFileInputRef}
+											bind:value={newCustomFileName}
+											onkeydown={handleNewFileKeydown}
+											onblur={cancelAddingCustomFile}
+											placeholder={m.project_custom_file_path_placeholder()}
+											class="text-foreground placeholder:text-muted-foreground border-b-primary h-6 w-full min-w-0 border-b bg-transparent text-base outline-none"
+										/>
+									</div>
+								{:else}
+									<button
+										class="hover:bg-accent text-muted-foreground hover:text-foreground flex min-h-[44px] w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2.5 text-base transition-colors"
+										onclick={startAddingCustomFile}
+									>
+										<AddIcon class="size-5" />
+										<span>{m.project_custom_file_add_button()}...</span>
+									</button>
+								{/if}
 							</TreeView.Folder>
 						</TreeView.Root>
 					</ResponsiveDialog>
@@ -949,13 +983,27 @@
 														</ContextMenu.Root>
 													{/each}
 												{/if}
-												<button
-													class="hover:bg-accent text-muted-foreground hover:text-foreground flex w-full cursor-pointer items-center gap-2 rounded px-2 py-1 text-xs"
-													onclick={() => (showAddCustomFileDialog = true)}
-												>
-													<AddIcon class="size-4" />
-													<span>{m.project_custom_file_add_button()}...</span>
-												</button>
+												{#if isAddingCustomFile}
+													<div class="flex items-center gap-2 rounded px-2 py-1">
+														<FilePenIcon class="size-4 shrink-0 text-purple-500" />
+														<input
+															bind:this={newFileInputRef}
+															bind:value={newCustomFileName}
+															onkeydown={handleNewFileKeydown}
+															onblur={cancelAddingCustomFile}
+															placeholder={m.project_custom_file_path_placeholder()}
+															class="text-foreground placeholder:text-muted-foreground border-b-primary h-5 w-full min-w-0 border-b bg-transparent text-xs outline-none"
+														/>
+													</div>
+												{:else}
+													<button
+														class="hover:bg-accent text-muted-foreground hover:text-foreground flex w-full cursor-pointer items-center gap-2 rounded px-2 py-1 text-xs"
+														onclick={startAddingCustomFile}
+													>
+														<AddIcon class="size-4" />
+														<span>{m.project_custom_file_add_button()}...</span>
+													</button>
+												{/if}
 											</TreeView.Folder>
 										</TreeView.Root>
 									</Card.Content>
@@ -1021,33 +1069,3 @@
 		</div>
 	</div>
 {/if}
-
-<Dialog.Root bind:open={showAddCustomFileDialog}>
-	<Dialog.Content class="sm:max-w-md">
-		<Dialog.Header>
-			<Dialog.Title>{m.project_custom_file_add()}</Dialog.Title>
-			<Dialog.Description>
-				{m.project_custom_file_add_description()}
-			</Dialog.Description>
-		</Dialog.Header>
-		<div class="grid gap-4 py-4">
-			<div class="grid gap-2">
-				<label for="custom-file-name" class="text-sm font-medium">{m.project_custom_file_path_label()}</label>
-				<Input
-					id="custom-file-name"
-					placeholder={m.project_custom_file_path_placeholder()}
-					bind:value={newCustomFileName}
-					onkeydown={(e) => {
-						if (e.key === 'Enter') {
-							handleAddCustomFile();
-						}
-					}}
-				/>
-			</div>
-		</div>
-		<Dialog.Footer>
-			<Button variant="outline" onclick={() => (showAddCustomFileDialog = false)}>{m.common_cancel()}</Button>
-			<Button onclick={handleAddCustomFile}>{m.project_custom_file_add_button()}</Button>
-		</Dialog.Footer>
-	</Dialog.Content>
-</Dialog.Root>

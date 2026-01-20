@@ -366,11 +366,11 @@
 
 		const result = await tryCatch(projectService.createProjectCustomFile(projectId, filePath));
 		if (result.error) {
-			toast.error(`Failed to add file: ${result.error.message || 'Unknown error'}`);
+			toast.error(m.project_custom_file_add_failed({ error: result.error.message || m.common_unknown() }));
 			return;
 		}
 
-		toast.success(`Added ${filePath}`);
+		toast.success(m.project_custom_file_add_success({ path: filePath }));
 		isAddingCustomFile = false;
 		newCustomFileName = '';
 		await invalidateAll();
@@ -397,7 +397,7 @@
 					const deleteFromDisk = checkboxStates['deleteFromDisk'] === true;
 					const result = await tryCatch(projectService.removeProjectCustomFile(projectId, filePath, deleteFromDisk));
 					if (result.error) {
-						toast.error(`Failed to remove file: ${result.error.message || 'Unknown error'}`);
+						toast.error(m.project_custom_file_remove_failed({ error: result.error.message || m.common_unknown() }));
 						return;
 					}
 
@@ -474,7 +474,7 @@
 				size="icon"
 				class="text-muted-foreground hover:text-foreground size-7"
 				onclick={() => removeFromSplitView()}
-				title="Close split pane"
+				title={m.project_close_split_pane()}
 			>
 				<CloseIcon class="size-4" />
 			</Button>
@@ -881,10 +881,10 @@
 															{m.common_open()}
 														</ContextMenu.Item>
 														{#if leftPaneFile !== 'compose'}
-															<ContextMenu.Item onclick={() => addToSplitView('compose')}>Open in split view</ContextMenu.Item>
+															<ContextMenu.Item onclick={() => addToSplitView('compose')}>{m.project_open_in_split_view()}</ContextMenu.Item>
 														{/if}
 														{#if rightPaneFile === 'compose'}
-															<ContextMenu.Item onclick={removeFromSplitView}>Close split pane</ContextMenu.Item>
+															<ContextMenu.Item onclick={removeFromSplitView}>{m.project_close_split_pane()}</ContextMenu.Item>
 														{/if}
 													</ContextMenu.Content>
 												</ContextMenu.Root>
@@ -905,10 +905,10 @@
 															{m.common_open()}
 														</ContextMenu.Item>
 														{#if leftPaneFile !== 'env'}
-															<ContextMenu.Item onclick={() => addToSplitView('env')}>Open in split view</ContextMenu.Item>
+															<ContextMenu.Item onclick={() => addToSplitView('env')}>{m.project_open_in_split_view()}</ContextMenu.Item>
 														{/if}
 														{#if rightPaneFile === 'env'}
-															<ContextMenu.Item onclick={removeFromSplitView}>Close split pane</ContextMenu.Item>
+															<ContextMenu.Item onclick={removeFromSplitView}>{m.project_close_split_pane()}</ContextMenu.Item>
 														{/if}
 													</ContextMenu.Content>
 												</ContextMenu.Root>
@@ -935,11 +935,11 @@
 																</ContextMenu.Item>
 																{#if leftPaneFile !== includeFile.path}
 																	<ContextMenu.Item onclick={() => addToSplitView(includeFile.path)}>
-																		Open in split view
+																		{m.project_open_in_split_view()}
 																	</ContextMenu.Item>
 																{/if}
 																{#if rightPaneFile === includeFile.path}
-																	<ContextMenu.Item onclick={removeFromSplitView}>Close split pane</ContextMenu.Item>
+																	<ContextMenu.Item onclick={removeFromSplitView}>{m.project_close_split_pane()}</ContextMenu.Item>
 																{/if}
 															</ContextMenu.Content>
 														</ContextMenu.Root>
@@ -969,11 +969,11 @@
 																</ContextMenu.Item>
 																{#if leftPaneFile !== customFileKey}
 																	<ContextMenu.Item onclick={() => addToSplitView(customFileKey)}>
-																		Open in split view
+																		{m.project_open_in_split_view()}
 																	</ContextMenu.Item>
 																{/if}
 																{#if rightPaneFile === customFileKey}
-																	<ContextMenu.Item onclick={removeFromSplitView}>Close split pane</ContextMenu.Item>
+																	<ContextMenu.Item onclick={removeFromSplitView}>{m.project_close_split_pane()}</ContextMenu.Item>
 																{/if}
 																<ContextMenu.Separator />
 																<ContextMenu.Item onclick={() => handleRemoveCustomFile(customFile.path)} variant="destructive">

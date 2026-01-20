@@ -1796,8 +1796,13 @@
 	"project_custom_file_path_placeholder": "config/my-file.yaml",
 	"project_custom_file_unlink": "Unlink file",
 	"project_custom_file_add_button": "Add file",
+	"project_custom_file_add_success": "Added {path}",
+	"project_custom_file_add_failed": "Failed to add file: {error}",
 	"project_custom_file_remove_title": "Remove Custom File",
 	"project_custom_file_remove_message": "Are you sure you want to remove \"{path}\" from this project?",
 	"project_custom_file_delete_from_disk": "Also delete file from disk",
-	"project_custom_file_removed": "Removed {path}"
+	"project_custom_file_removed": "Removed {path}",
+	"project_custom_file_remove_failed": "Failed to remove file: {error}",
+	"project_open_in_split_view": "Open in split view",
+	"project_close_split_pane": "Close split pane"
 }

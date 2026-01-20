@@ -271,7 +271,7 @@
 		if (project?.includeFiles) {
 			const newIncludeState: Record<string, string> = {};
 			project.includeFiles.forEach((file) => {
-				newIncludeState[file.relativePath] = file.content;
+				newIncludeState[file.path] = file.content;
 			});
 			includeFilesState = newIncludeState;
 			originalIncludeFiles = { ...newIncludeState };
@@ -306,26 +306,26 @@
 			setLoadingState: (value) => (isLoading.saving = value),
 			onSuccess: async (updatedStack: Project) => {
 				// Then update any changed include files
-				for (const relativePath of Object.keys(includeFilesState)) {
-					if (includeFilesState[relativePath] !== originalIncludeFiles[relativePath]) {
+				for (const filePath of Object.keys(includeFilesState)) {
+					if (includeFilesState[filePath] !== originalIncludeFiles[filePath]) {
 						const includeResult = await tryCatch(
-							projectService.updateProjectIncludeFile(projectId, relativePath, includeFilesState[relativePath])
+							projectService.updateProjectIncludeFile(projectId, filePath, includeFilesState[filePath])
 						);
 						if (includeResult.error) {
-							toast.error(includeResult.error.message || m.common_update_failed({ resource: relativePath }));
+							toast.error(includeResult.error.message || m.common_update_failed({ resource: filePath }));
 							return;
 						}
 					}
 				}
 
 				// Then update any changed custom files
-				for (const relativePath of Object.keys(customFilesState)) {
-					if (customFilesState[relativePath] !== originalCustomFiles[relativePath]) {
+				for (const filePath of Object.keys(customFilesState)) {
+					if (customFilesState[filePath] !== originalCustomFiles[filePath]) {
 						const customResult = await tryCatch(
-							projectService.updateProjectCustomFile(projectId, relativePath, customFilesState[relativePath])
+							projectService.updateProjectCustomFile(projectId, filePath, customFilesState[filePath])
 						);
 						if (customResult.error) {
-							toast.error(m.common_update_failed({ resource: relativePath }));
+							toast.error(m.common_update_failed({ resource: filePath }));
 							return;
 						}
 					}
@@ -344,21 +344,20 @@
 	}
 
 	async function handleAddCustomFile() {
-		const trimmedPath = newCustomFileName.trim();
+		const filePath = newCustomFileName.trim();
 
-		if (!trimmedPath) {
+		if (!filePath) {
 			toast.error('Please enter a file name');
 			return;
 		}
 
-		const relativePath = newCustomFileName.trim();
-		const result = await tryCatch(projectService.createProjectCustomFile(projectId, relativePath));
+		const result = await tryCatch(projectService.createProjectCustomFile(projectId, filePath));
 		if (result.error) {
 			toast.error(`Failed to add file: ${result.error.message || 'Unknown error'}`);
 			return;
 		}
 
-		toast.success(`Added ${trimmedPath}`);
+		toast.success(`Added ${filePath}`);
 		showAddCustomFileDialog = false;
 		newCustomFileName = '';
 		await invalidateAll();
@@ -373,9 +372,7 @@
 				destructive: true,
 				action: async (checkboxStates) => {
 					const deleteFromDisk = checkboxStates['deleteFromDisk'] === true;
-					const result = await tryCatch(
-						projectService.removeProjectCustomFile(projectId, filePath, deleteFromDisk)
-					);
+					const result = await tryCatch(projectService.removeProjectCustomFile(projectId, filePath, deleteFromDisk));
 					if (result.error) {
 						toast.error(`Failed to remove file: ${result.error.message || 'Unknown error'}`);
 						return;
@@ -398,9 +395,7 @@
 					await invalidateAll();
 				}
 			},
-			checkboxes: [
-				{ id: 'deleteFromDisk', label: m.project_custom_file_delete_from_disk(), initialState: false }
-			]
+			checkboxes: [{ id: 'deleteFromDisk', label: m.project_custom_file_delete_from_disk(), initialState: false }]
 		});
 	}
 
@@ -513,11 +508,11 @@
 			</CodePanel>
 		{/if}
 	{:else}
-		{@const includeFile = project?.includeFiles?.find((f) => f.relativePath === file)}
-		{#if includeFile && includeFile.relativePath in includeFilesState}
-			<CodePanel open={true} language="yaml" bind:value={includeFilesState[includeFile.relativePath]}>
+		{@const includeFile = project?.includeFiles?.find((f) => f.path === file)}
+		{#if includeFile && includeFile.path in includeFilesState}
+			<CodePanel open={true} language="yaml" bind:value={includeFilesState[includeFile.path]}>
 				{#snippet headerTitle()}
-					<span class="truncate" title={includeFile.relativePath}>{includeFile.relativePath}</span>
+					<span class="truncate" title={includeFile.path}>{includeFile.path}</span>
 				{/snippet}
 				{#snippet headerAction()}
 					<div class="flex shrink-0 items-center gap-1">
@@ -756,15 +751,15 @@
 
 							{#if project?.includeFiles && project.includeFiles.length > 0}
 								<TreeView.Folder name={m.project_includes()} class="[&>div]:space-y-1">
-									{#each project.includeFiles as includeFile (includeFile.relativePath)}
+									{#each project.includeFiles as includeFile (includeFile.path)}
 										<TreeView.File
-											name={includeFile.relativePath}
+											name={includeFile.path}
 											onclick={() => {
-												selectFile(includeFile.relativePath);
+												selectFile(includeFile.path);
 												mobileFileDrawerOpen = false;
 											}}
 											class="hover:bg-accent min-h-[44px] w-full rounded-lg px-3 py-2.5 text-base transition-colors {isMobileFileSelected(
-												includeFile.relativePath
+												includeFile.path
 											)
 												? 'bg-accent'
 												: ''}"
@@ -887,13 +882,13 @@
 
 											{#if project?.includeFiles && project.includeFiles.length > 0}
 												<TreeView.Folder name={m.project_includes()}>
-													{#each project.includeFiles as includeFile (includeFile.relativePath)}
+													{#each project.includeFiles as includeFile (includeFile.path)}
 														<ContextMenu.Root>
 															<ContextMenu.Trigger class="w-full">
 																<TreeView.File
-																	name={includeFile.relativePath}
-																	onclick={() => selectFile(includeFile.relativePath)}
-																	class={isFileInSplitView(includeFile.relativePath) ? 'bg-accent' : ''}
+																	name={includeFile.path}
+																	onclick={() => selectFile(includeFile.path)}
+																	class={isFileInSplitView(includeFile.path) ? 'bg-accent' : ''}
 																>
 																	{#snippet icon()}
 																		<FileSymlinkIcon class="size-4 text-amber-500" />
@@ -901,15 +896,15 @@
 																</TreeView.File>
 															</ContextMenu.Trigger>
 															<ContextMenu.Content class="min-w-[160px]">
-																<ContextMenu.Item onclick={() => selectFile(includeFile.relativePath)}>
+																<ContextMenu.Item onclick={() => selectFile(includeFile.path)}>
 																	{m.common_open()}
 																</ContextMenu.Item>
-																{#if leftPaneFile !== includeFile.relativePath}
-																	<ContextMenu.Item onclick={() => addToSplitView(includeFile.relativePath)}>
+																{#if leftPaneFile !== includeFile.path}
+																	<ContextMenu.Item onclick={() => addToSplitView(includeFile.path)}>
 																		Open in split view
 																	</ContextMenu.Item>
 																{/if}
-																{#if rightPaneFile === includeFile.relativePath}
+																{#if rightPaneFile === includeFile.path}
 																	<ContextMenu.Item onclick={removeFromSplitView}>Close split pane</ContextMenu.Item>
 																{/if}
 															</ContextMenu.Content>

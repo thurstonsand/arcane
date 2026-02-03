@@ -90,6 +90,7 @@
 		!isGitOpsManaged && !isLoading.saving && project?.status !== 'running' && project?.status !== 'partially running'
 	);
 	let canEditCompose = $derived(!isGitOpsManaged);
+	let canEditEnv = $derived(!isGitOpsManaged);
 
 	let autoScrollStackLogs = $state(true);
 
@@ -550,6 +551,7 @@
 											language="env"
 											bind:value={$inputs.envContent.value}
 											error={$inputs.envContent.error ?? undefined}
+											readOnly={!canEditEnv}
 										/>
 									{:else}
 										{@const includeFile = project?.includeFiles?.find((f) => f.relativePath === selectedFile)}
@@ -644,6 +646,7 @@
 												language="env"
 												bind:value={$inputs.envContent.value}
 												error={$inputs.envContent.error ?? undefined}
+												readOnly={!canEditEnv}
 											/>
 										{:else}
 											{@const includeFile = project?.includeFiles?.find((f) => f.relativePath === selectedFile)}
@@ -708,6 +711,7 @@
 											language="env"
 											bind:value={$inputs.envContent.value}
 											error={$inputs.envContent.error ?? undefined}
+											readOnly={!canEditEnv}
 										/>
 									</div>
 
@@ -744,6 +748,7 @@
 													language="env"
 													bind:value={$inputs.envContent.value}
 													error={$inputs.envContent.error ?? undefined}
+													readOnly={!canEditEnv}
 												/>
 											</div>
 										{/snippet}

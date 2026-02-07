@@ -65,11 +65,11 @@ func (q *Queries) CountImageUpdatesWithUpdateType(ctx context.Context, updateTyp
 
 const deleteImageUpdatesByIDs = `-- name: DeleteImageUpdatesByIDs :execrows
 DELETE FROM image_updates
-WHERE id IN ($1)
+WHERE id = ANY($1::text[])
 `
 
-func (q *Queries) DeleteImageUpdatesByIDs(ctx context.Context, ids []string) (int64, error) {
-	result, err := q.db.Exec(ctx, deleteImageUpdatesByIDs, ids)
+func (q *Queries) DeleteImageUpdatesByIDs(ctx context.Context, dollar_1 []string) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteImageUpdatesByIDs, dollar_1)
 	if err != nil {
 		return 0, err
 	}
@@ -256,7 +256,7 @@ SELECT id,
 			 created_at,
 			 updated_at
 FROM image_updates
-WHERE id IN ($1)
+WHERE id = ANY($1::text[])
 `
 
 type ListImageUpdatesByIDsRow struct {
@@ -281,8 +281,8 @@ type ListImageUpdatesByIDsRow struct {
 	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
 }
 
-func (q *Queries) ListImageUpdatesByIDs(ctx context.Context, ids []string) ([]*ListImageUpdatesByIDsRow, error) {
-	rows, err := q.db.Query(ctx, listImageUpdatesByIDs, ids)
+func (q *Queries) ListImageUpdatesByIDs(ctx context.Context, dollar_1 []string) ([]*ListImageUpdatesByIDsRow, error) {
+	rows, err := q.db.Query(ctx, listImageUpdatesByIDs, dollar_1)
 	if err != nil {
 		return nil, err
 	}
@@ -498,11 +498,11 @@ const markImageUpdatesNotified = `-- name: MarkImageUpdatesNotified :exec
 UPDATE image_updates
 SET notification_sent = true,
 		updated_at = NOW()
-WHERE id IN ($1)
+WHERE id = ANY($1::text[])
 `
 
-func (q *Queries) MarkImageUpdatesNotified(ctx context.Context, ids []string) error {
-	_, err := q.db.Exec(ctx, markImageUpdatesNotified, ids)
+func (q *Queries) MarkImageUpdatesNotified(ctx context.Context, dollar_1 []string) error {
+	_, err := q.db.Exec(ctx, markImageUpdatesNotified, dollar_1)
 	return err
 }
 

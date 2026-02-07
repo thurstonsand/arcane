@@ -24,11 +24,11 @@ func (q *Queries) DeleteSetting(ctx context.Context, key string) (int64, error) 
 
 const deleteSettingsNotIn = `-- name: DeleteSettingsNotIn :execrows
 DELETE FROM settings
-WHERE key NOT IN ($1)
+WHERE NOT (key = ANY($1::text[]))
 `
 
-func (q *Queries) DeleteSettingsNotIn(ctx context.Context, keys []string) (int64, error) {
-	result, err := q.db.Exec(ctx, deleteSettingsNotIn, keys)
+func (q *Queries) DeleteSettingsNotIn(ctx context.Context, dollar_1 []string) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteSettingsNotIn, dollar_1)
 	if err != nil {
 		return 0, err
 	}

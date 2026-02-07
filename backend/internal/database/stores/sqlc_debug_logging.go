@@ -103,7 +103,11 @@ func logDBQuery(ctx context.Context, driver, op, query string, args []interface{
 		attrs = append(attrs, "duration_ms", duration.Milliseconds())
 	}
 	if err != nil {
-		attrs = append(attrs, "error", err)
+		if isNotFound(err) {
+			attrs = append(attrs, "not_found", true)
+		} else {
+			attrs = append(attrs, "error", err)
+		}
 	}
 
 	slog.DebugContext(ctx, "Database query", attrs...)

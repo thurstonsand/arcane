@@ -29,4 +29,4 @@ WHERE key = $1;
 
 -- name: DeleteSettingsNotIn :execrows
 DELETE FROM settings
-WHERE key NOT IN (sqlc.slice('keys'));
+WHERE NOT (key = ANY($1::text[]));

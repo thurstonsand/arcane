@@ -146,7 +146,7 @@ SELECT id,
 			 created_at,
 			 updated_at
 FROM image_updates
-WHERE id IN (sqlc.slice('ids'));
+WHERE id = ANY($1::text[]);
 
 -- name: ListImageUpdatesWithUpdate :many
 SELECT id,
@@ -199,11 +199,11 @@ WHERE has_update = true
 UPDATE image_updates
 SET notification_sent = true,
 		updated_at = NOW()
-WHERE id IN (sqlc.slice('ids'));
+WHERE id = ANY($1::text[]);
 
 -- name: DeleteImageUpdatesByIDs :execrows
 DELETE FROM image_updates
-WHERE id IN (sqlc.slice('ids'));
+WHERE id = ANY($1::text[]);
 
 -- name: CountImageUpdates :one
 SELECT COUNT(*)

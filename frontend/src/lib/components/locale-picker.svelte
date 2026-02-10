@@ -24,8 +24,8 @@
 
 	const locales: Record<string, string> = {
 		de: 'Deutsch',
-		en: 'English',
 		el: 'Ελληνικά',
+		en: 'English',
 		eo: 'Esperanto',
 		es: 'Español',
 		fr: 'Français',
@@ -36,9 +36,9 @@
 		'pt-BR': 'Português brasileiro',
 		ru: 'Русский',
 		sv: 'Svenska',
+		uk: 'Українська',
 		vi: 'Tiếng Việt',
-		'zh-CN': '中文',
-		'zh-TW': '繁體中文'
+		'zh-CN': '中文'
 	};
 
 	async function updateLocale(locale: Locale) {

@@ -149,7 +149,7 @@
 		scheduledPruneNetworks: z.boolean(),
 		scheduledPruneBuildCache: z.boolean(),
 		vulnerabilityScanEnabled: z.boolean(),
-		autoUpdateExcludedContainers: z.string().optional()
+		autoUpdateExcludedContainers: z.string()
 	});
 
 	// Build current settings object from environment and settings data

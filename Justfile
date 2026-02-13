@@ -613,8 +613,8 @@ release *args:
     TEST=false
     FORCE_MAJOR=false
     VERBOSE=false
-    args=({{ args }})
-    for arg in "${args[@]}"; do
+    set -- {{ args }}
+    for arg in "$@"; do
         case "$arg" in
         --test)
             TEST=true

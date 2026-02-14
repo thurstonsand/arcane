@@ -1298,18 +1298,23 @@ func (s *NotificationService) sendBatchTelegramNotification(ctx context.Context,
 		description = "1 container image has an update available."
 	}
 
-	message := fmt.Sprintf("*%s*\n\n%s\n\n", title, description)
+	message := fmt.Sprintf("<b>%s</b>\n\n%s\n\n", title, description)
 
 	for imageRef, update := range updates {
-		message += fmt.Sprintf("*%s*\n"+
-			"• *Type:* %s\n"+
-			"• *Current:* `%s`\n"+
-			"• *Latest:* `%s`\n\n",
+		message += fmt.Sprintf("<b>%s</b>\n"+
+			"• <b>Type:</b> %s\n"+
+			"• <b>Current:</b> <code>%s</code>\n"+
+			"• <b>Latest:</b> <code>%s</code>\n\n",
 			imageRef,
 			update.UpdateType,
 			update.CurrentDigest,
 			update.LatestDigest,
 		)
+	}
+
+	// Set parse mode to HTML if not already set
+	if telegramConfig.ParseMode == "" {
+		telegramConfig.ParseMode = "HTML"
 	}
 
 	if err := notifications.SendTelegram(ctx, telegramConfig, message); err != nil {

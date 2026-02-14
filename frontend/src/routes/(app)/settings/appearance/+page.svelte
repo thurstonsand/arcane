@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { z } from 'zod/v4';
 	import { toast } from 'svelte-sonner';
+	import { mode, toggleMode } from 'mode-watcher';
 	import settingsStore from '$lib/stores/config-store';
 	import { m } from '$lib/paraglide/messages';
 	import { navigationSettingsOverridesStore, resetNavigationVisibility } from '$lib/utils/navigation.utils';
@@ -10,9 +11,10 @@
 	import { createSettingsForm } from '$lib/utils/settings-form.util';
 	import { Separator } from '$lib/components/ui/separator';
 	import { Label } from '$lib/components/ui/label';
+	import LocalePicker from '$lib/components/locale-picker.svelte';
 	import AccentColorPicker from '$lib/components/accent-color/accent-color-picker.svelte';
 	import { applyAccentColor } from '$lib/utils/accent-color-util';
-	import { ApperanceIcon, MonitorSpeakerIcon, DockIcon } from '$lib/icons';
+	import { ApperanceIcon, MonitorSpeakerIcon, DockIcon, MoonIcon, SunIcon } from '$lib/icons';
 	import SwitchWithLabel from '$lib/components/form/labeled-switch.svelte';
 	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
 
@@ -89,6 +91,7 @@
 	// Show Labels state
 	const labelsIsLocal = $derived(persistedState.showLabels !== undefined);
 	const labelsDisplayValue = $derived(labelsIsLocal ? persistedState.showLabels : $formInputs.mobileNavigationShowLabels.value);
+	const isDarkMode = $derived(mode.current === 'dark');
 
 	function handleLabelsChange(checked: boolean) {
 		if (labelsIsLocal) {
@@ -154,6 +157,47 @@
 								<Label for="enableGravatar" class="font-normal">
 									{m.general_enable_gravatar_label()}
 								</Label>
+							</div>
+						</div>
+
+						<Separator />
+
+						<!-- Language -->
+						<div class="grid gap-4 md:grid-cols-[1fr_1.5fr] md:gap-8">
+							<div>
+								<Label class="text-base">{m.language()}</Label>
+								<p class="text-muted-foreground mt-1 text-sm">
+									{m.appearance_language_current_user_description()}
+								</p>
+							</div>
+							<div class="flex items-center gap-2">
+								<LocalePicker
+									inline={true}
+									id="appearanceLocalePicker"
+									class="bg-background/50 border-border/30 text-foreground h-9 w-32 text-sm font-medium"
+								/>
+							</div>
+						</div>
+
+						<Separator />
+
+						<!-- Theme -->
+						<div class="grid gap-4 md:grid-cols-[1fr_1.5fr] md:gap-8">
+							<div>
+								<Label class="text-base">{m.common_toggle_theme()}</Label>
+								<p class="text-muted-foreground mt-1 text-sm">
+									{m.appearance_theme_current_user_description()}
+								</p>
+							</div>
+							<div class="flex items-center gap-2">
+								<ArcaneButton action="base" tone="outline" class="h-9 min-w-40 justify-start gap-2" onclick={toggleMode}>
+									{#if isDarkMode}
+										<SunIcon class="size-4" />
+									{:else}
+										<MoonIcon class="size-4" />
+									{/if}
+									<span>{isDarkMode ? m.sidebar_dark_mode() : m.sidebar_light_mode()}</span>
+								</ArcaneButton>
 							</div>
 						</div>
 					</div>

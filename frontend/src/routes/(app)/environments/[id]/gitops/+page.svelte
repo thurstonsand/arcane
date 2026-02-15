@@ -1,6 +1,12 @@
 <script lang="ts">
 	import { toast } from 'svelte-sonner';
-	import type { GitOpsSync, GitOpsSyncCreateDto, GitOpsSyncUpdateDto, ImportGitOpsSyncRequest } from '$lib/types/gitops.type';
+	import type {
+		GitOpsSync,
+		GitOpsSyncCounts,
+		GitOpsSyncCreateDto,
+		GitOpsSyncUpdateDto,
+		ImportGitOpsSyncRequest
+	} from '$lib/types/gitops.type';
 	import GitOpsSyncFormSheet from '$lib/components/dialogs/gitops-sync-dialog.svelte';
 	import GitOpsImportDialog from '$lib/components/dialogs/gitops-import-dialog.svelte';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
@@ -31,8 +37,12 @@
 		import: false
 	});
 
-	const activeSyncs = $derived(syncs.data?.filter((s) => s.autoSync).length ?? 0);
-	const successfulSyncs = $derived(syncs.data?.filter((s) => s.lastSyncStatus === 'success').length ?? 0);
+	const syncCountsFallback: GitOpsSyncCounts = {
+		totalSyncs: 0,
+		activeSyncs: 0,
+		successfulSyncs: 0
+	};
+	const syncCounts = $derived(syncs?.counts ?? syncCountsFallback);
 
 	$effect(() => {
 		if (page.url.searchParams.get('action') === 'create') {
@@ -162,21 +172,21 @@
 	const statCards = $derived<StatCardConfig[]>([
 		{
 			title: m.common_total(),
-			value: syncs?.pagination?.totalItems ?? 0,
+			value: syncCounts.totalSyncs,
 			icon: RefreshIcon,
 			iconColor: 'text-blue-500',
 			bgColor: 'bg-blue-500/10'
 		},
 		{
 			title: m.common_active(),
-			value: activeSyncs,
+			value: syncCounts.activeSyncs,
 			icon: ClockIcon,
 			iconColor: 'text-purple-500',
 			bgColor: 'bg-purple-500/10'
 		},
 		{
 			title: m.common_successful(),
-			value: successfulSyncs,
+			value: syncCounts.successfulSyncs,
 			icon: SuccessIcon,
 			iconColor: 'text-green-500',
 			bgColor: 'bg-green-500/10'

@@ -3,6 +3,7 @@ import type {
 	GitOpsSyncCreateDto,
 	GitOpsSyncUpdateDto,
 	GitOpsSync,
+	GitOpsSyncCounts,
 	SyncResult,
 	SyncStatus,
 	BrowseResponse,
@@ -13,7 +14,7 @@ import type { Paginated, SearchPaginationSortRequest } from '$lib/types/paginati
 import { transformPaginationParams } from '$lib/utils/params.util';
 
 export default class GitOpsSyncService extends BaseAPIService {
-	async getSyncs(environmentId: string, options?: SearchPaginationSortRequest): Promise<Paginated<GitOpsSync>> {
+	async getSyncs(environmentId: string, options?: SearchPaginationSortRequest): Promise<Paginated<GitOpsSync, GitOpsSyncCounts>> {
 		const params = transformPaginationParams(options);
 		const res = await this.api.get(`/environments/${environmentId}/gitops-syncs`, { params });
 		return res.data;

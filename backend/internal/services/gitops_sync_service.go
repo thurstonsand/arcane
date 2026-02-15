@@ -72,9 +72,9 @@ func (s *GitOpsSyncService) UpdateSyncIntervalMinutes(ctx context.Context, id st
 		Update("sync_interval", minutes).Error
 }
 
-func (s *GitOpsSyncService) GetSyncsPaginated(ctx context.Context, environmentID string, params pagination.QueryParams) ([]gitops.GitOpsSync, pagination.Response, error) {
+func (s *GitOpsSyncService) GetSyncsPaginated(ctx context.Context, environmentID string, params pagination.QueryParams) ([]gitops.GitOpsSync, pagination.Response, gitops.SyncCounts, error) {
 	var syncs []models.GitOpsSync
-	q := s.db.WithContext(ctx).Model(&models.GitOpsSync{}).Preload("Repository").Preload("Project").
+	q := s.db.WithContext(ctx).Model(&models.GitOpsSync{}).
 		Where("environment_id = ?", environmentID)
 
 	if term := strings.TrimSpace(params.Search); term != "" {
@@ -90,17 +90,45 @@ func (s *GitOpsSyncService) GetSyncsPaginated(ctx context.Context, environmentID
 	q = pagination.ApplyFilter(q, "repository_id", params.Filters["repositoryId"])
 	q = pagination.ApplyFilter(q, "project_id", params.Filters["projectId"])
 
-	paginationResp, err := pagination.PaginateAndSortDB(params, q, &syncs)
+	counts, err := s.getFilteredSyncCounts(q)
 	if err != nil {
-		return nil, pagination.Response{}, fmt.Errorf("failed to paginate gitops syncs: %w", err)
+		return nil, pagination.Response{}, gitops.SyncCounts{}, fmt.Errorf("failed to get sync counts: %w", err)
+	}
+
+	paginationResp, err := pagination.PaginateAndSortDB(params, q.Preload("Repository").Preload("Project"), &syncs)
+	if err != nil {
+		return nil, pagination.Response{}, gitops.SyncCounts{}, fmt.Errorf("failed to paginate gitops syncs: %w", err)
 	}
 
 	out, mapErr := mapper.MapSlice[models.GitOpsSync, gitops.GitOpsSync](syncs)
 	if mapErr != nil {
-		return nil, pagination.Response{}, fmt.Errorf("failed to map syncs: %w", mapErr)
+		return nil, pagination.Response{}, gitops.SyncCounts{}, fmt.Errorf("failed to map syncs: %w", mapErr)
 	}
 
-	return out, paginationResp, nil
+	return out, paginationResp, counts, nil
+}
+
+func (s *GitOpsSyncService) getFilteredSyncCounts(query *gorm.DB) (gitops.SyncCounts, error) {
+	var totalSyncs int64
+	if err := query.Session(&gorm.Session{}).Count(&totalSyncs).Error; err != nil {
+		return gitops.SyncCounts{}, err
+	}
+
+	var activeSyncs int64
+	if err := query.Session(&gorm.Session{}).Where("auto_sync = ?", true).Count(&activeSyncs).Error; err != nil {
+		return gitops.SyncCounts{}, err
+	}
+
+	var successfulSyncs int64
+	if err := query.Session(&gorm.Session{}).Where("last_sync_status = ?", "success").Count(&successfulSyncs).Error; err != nil {
+		return gitops.SyncCounts{}, err
+	}
+
+	return gitops.SyncCounts{
+		TotalSyncs:      int(totalSyncs),
+		ActiveSyncs:     int(activeSyncs),
+		SuccessfulSyncs: int(successfulSyncs),
+	}, nil
 }
 
 func (s *GitOpsSyncService) GetSyncByID(ctx context.Context, environmentID, id string) (*models.GitOpsSync, error) {

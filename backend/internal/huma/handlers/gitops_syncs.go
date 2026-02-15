@@ -25,6 +25,7 @@ type GitOpsSyncHandler struct {
 type GitOpsSyncPaginatedResponse struct {
 	Success    bool                    `json:"success"`
 	Data       []gitops.GitOpsSync     `json:"data"`
+	Counts     gitops.SyncCounts       `json:"counts"`
 	Pagination base.PaginationResponse `json:"pagination"`
 }
 
@@ -253,7 +254,7 @@ func (h *GitOpsSyncHandler) ListSyncs(ctx context.Context, input *ListGitOpsSync
 
 	params := buildPaginationParams(0, input.Start, input.Limit, input.Sort, input.Order, input.Search)
 
-	syncs, paginationResp, err := h.syncService.GetSyncsPaginated(ctx, input.EnvironmentID, params)
+	syncs, paginationResp, counts, err := h.syncService.GetSyncsPaginated(ctx, input.EnvironmentID, params)
 	if err != nil {
 		return nil, huma.Error500InternalServerError((&common.GitOpsSyncListError{Err: err}).Error())
 	}
@@ -262,6 +263,7 @@ func (h *GitOpsSyncHandler) ListSyncs(ctx context.Context, input *ListGitOpsSync
 		Body: GitOpsSyncPaginatedResponse{
 			Success: true,
 			Data:    syncs,
+			Counts:  counts,
 			Pagination: base.PaginationResponse{
 				TotalPages:      paginationResp.TotalPages,
 				TotalItems:      paginationResp.TotalItems,

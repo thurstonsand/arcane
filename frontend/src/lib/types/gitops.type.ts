@@ -75,6 +75,12 @@ export interface GitOpsSync {
 	updatedAt: string;
 }
 
+export interface GitOpsSyncCounts {
+	totalSyncs: number;
+	activeSyncs: number;
+	successfulSyncs: number;
+}
+
 export interface SyncResult {
 	success: boolean;
 	message: string;

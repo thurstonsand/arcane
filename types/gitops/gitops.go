@@ -143,6 +143,24 @@ type GitOpsSync struct {
 	UpdatedAt time.Time `json:"updatedAt"`
 }
 
+// SyncCounts contains counts of syncs by status within the current filtered set.
+type SyncCounts struct {
+	// TotalSyncs is the total number of syncs in the current filtered set.
+	//
+	// Required: true
+	TotalSyncs int `json:"totalSyncs"`
+
+	// ActiveSyncs is the number of auto-sync enabled syncs in the current filtered set.
+	//
+	// Required: true
+	ActiveSyncs int `json:"activeSyncs"`
+
+	// SuccessfulSyncs is the number of syncs with last status "success" in the current filtered set.
+	//
+	// Required: true
+	SuccessfulSyncs int `json:"successfulSyncs"`
+}
+
 // CreateRepositoryRequest represents the request to create a git repository.
 type CreateRepositoryRequest struct {
 	// Name of the git repository.

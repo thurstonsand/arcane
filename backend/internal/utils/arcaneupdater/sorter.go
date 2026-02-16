@@ -35,6 +35,14 @@ func NewContainerSorter(containers []ContainerWithDeps) *ContainerSorter {
 	nameToIndex := make(map[string]int, len(containers))
 	for i, c := range containers {
 		nameToIndex[c.Name] = i
+		// Also index by container ID and short ID so that NetworkMode
+		// references like "container:<id>" resolve correctly.
+		if id := c.Container.ID; id != "" {
+			nameToIndex[id] = i
+			if len(id) >= 12 {
+				nameToIndex[id[:12]] = i
+			}
+		}
 	}
 	return &ContainerSorter{
 		containers:  containers,

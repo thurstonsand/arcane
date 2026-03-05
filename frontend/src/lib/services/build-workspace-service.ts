@@ -42,10 +42,7 @@ export class BuildWorkspaceService extends BaseAPIService {
 		formData.append('file', file);
 		return this.handleResponse(
 			this.api.post(`/environments/${envId}/builds/browse/upload`, formData, {
-				params: { path },
-				headers: {
-					'Content-Type': 'multipart/form-data'
-				}
+				params: { path }
 			})
 		);
 	}

@@ -3,9 +3,11 @@ package handlers
 import (
 	"context"
 	"io"
+	"mime/multipart"
 	"path"
 
 	"github.com/danielgtaylor/huma/v2"
+	"github.com/getarcaneapp/arcane/backend/internal/common"
 	"github.com/getarcaneapp/arcane/backend/internal/services"
 	"github.com/getarcaneapp/arcane/types/base"
 	volumetypes "github.com/getarcaneapp/arcane/types/volume"
@@ -58,6 +60,23 @@ func RegisterBuildWorkspaces(api huma.API, workspaceService *services.BuildWorks
 		Description: "Upload a file into the builds workspace root",
 		Tags:        []string{"Builds"},
 		Security:    []map[string][]string{{"BearerAuth": {}}, {"ApiKeyAuth": {}}},
+		RequestBody: &huma.RequestBody{
+			Content: map[string]*huma.MediaType{
+				"multipart/form-data": {
+					Schema: &huma.Schema{
+						Type: "object",
+						Properties: map[string]*huma.Schema{
+							"file": {
+								Type:        "string",
+								Format:      "binary",
+								Description: "File to upload",
+							},
+						},
+						Required: []string{"file"},
+					},
+				},
+			},
+		},
 	}, h.UploadFile)
 
 	huma.Register(api, huma.Operation{
@@ -118,9 +137,9 @@ type DownloadBuildFileOutput struct {
 }
 
 type UploadBuildFileInput struct {
-	EnvironmentID string        `path:"id" doc:"Environment ID"`
-	Path          string        `query:"path" default:"/" doc:"Destination path"`
-	File          huma.FormFile `form:"file" doc:"File to upload"`
+	EnvironmentID string         `path:"id" doc:"Environment ID"`
+	Path          string         `query:"path" default:"/" doc:"Destination path"`
+	RawBody       multipart.Form `contentType:"multipart/form-data"`
 }
 
 type CreateBuildDirectoryInput struct {
@@ -178,7 +197,20 @@ func (h *BuildWorkspaceHandler) UploadFile(ctx context.Context, input *UploadBui
 	if h.service == nil {
 		return nil, huma.Error500InternalServerError("service not available")
 	}
-	if err := h.service.UploadFile(ctx, input.Path, input.File, input.File.Filename); err != nil {
+
+	files := input.RawBody.File["file"]
+	if len(files) == 0 {
+		return nil, huma.Error400BadRequest((&common.NoFileUploadedError{}).Error())
+	}
+
+	fileHeader := files[0]
+	file, err := fileHeader.Open()
+	if err != nil {
+		return nil, huma.Error500InternalServerError((&common.FileUploadReadError{Err: err}).Error())
+	}
+	defer func() { _ = file.Close() }()
+
+	if err := h.service.UploadFile(ctx, input.Path, file, fileHeader.Filename); err != nil {
 		return nil, huma.Error500InternalServerError(err.Error())
 	}
 	return &base.ApiResponse[base.MessageResponse]{

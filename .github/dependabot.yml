@@ -5,21 +5,6 @@ updates:
     schedule:
       interval: 'weekly'
 
-  - package-ecosystem: 'npm'
-    directory: '/frontend'
-    schedule:
-      interval: 'weekly'
-
-  - package-ecosystem: 'npm'
-    directory: '/tests'
-    schedule:
-      interval: 'weekly'
-
-  - package-ecosystem: 'npm'
-    directory: '/email-templates'
-    schedule:
-      interval: 'weekly'
-
   - package-ecosystem: 'gomod'
     directory: '/backend'
     schedule:

@@ -833,6 +833,68 @@ func buildUpdaterRecreateNetworkingConfigInternal(networkMode container.NetworkM
 	return &network.NetworkingConfig{EndpointsConfig: sanitizedEndpointsConfig}
 }
 
+// waitForContainerReady waits for a container to become healthy (if it has a
+// health check) or at least running. Called between updating a dependency and
+// its dependents to avoid race conditions (e.g., VPN container must have its
+// tunnel up before containers sharing its network namespace are started).
+func (s *UpdaterService) waitForContainerReady(ctx context.Context, dcli *client.Client, containerID, containerName string) {
+	const (
+		healthPollInterval = 2 * time.Second
+		healthTimeout      = 60 * time.Second
+		runningGracePeriod = 5 * time.Second
+	)
+
+	inspectResult, err := dcli.ContainerInspect(ctx, containerID, client.ContainerInspectOptions{})
+	if err != nil {
+		slog.WarnContext(ctx, "waitForContainerReady: inspect failed, proceeding without wait",
+			"container", containerName, "err", err)
+		return
+	}
+	inspect := inspectResult.Container
+
+	if inspect.Config != nil && inspect.Config.Healthcheck != nil && len(inspect.Config.Healthcheck.Test) > 0 {
+		deadline := time.Now().Add(healthTimeout)
+		slog.InfoContext(ctx, "waitForContainerReady: waiting for health check",
+			"container", containerName, "timeout", healthTimeout)
+
+		for time.Now().Before(deadline) {
+			select {
+			case <-ctx.Done():
+				slog.WarnContext(ctx, "waitForContainerReady: context cancelled", "container", containerName)
+				return
+			case <-time.After(healthPollInterval):
+			}
+
+			ciResult, err := dcli.ContainerInspect(ctx, containerID, client.ContainerInspectOptions{})
+			if err != nil {
+				continue
+			}
+			ci := ciResult.Container
+			if ci.State != nil && ci.State.Health != nil {
+				switch ci.State.Health.Status {
+				case "healthy":
+					slog.InfoContext(ctx, "waitForContainerReady: container is healthy", "container", containerName)
+					return
+				case "unhealthy":
+					slog.WarnContext(ctx, "waitForContainerReady: container is unhealthy, proceeding anyway",
+						"container", containerName)
+					return
+				}
+			}
+		}
+		slog.WarnContext(ctx, "waitForContainerReady: timed out waiting for health check, proceeding",
+			"container", containerName)
+		return
+	}
+
+	slog.DebugContext(ctx, "waitForContainerReady: no health check, waiting grace period",
+		"container", containerName, "grace", runningGracePeriod)
+	select {
+	case <-ctx.Done():
+	case <-time.After(runningGracePeriod):
+	}
+}
+
 // normalizeRef returns a canonical "registry/repository:tag" without digest.
 // Examples:
 // - "redis:latest" -> "docker.io/library/redis:latest"
@@ -1277,6 +1339,10 @@ func (s *UpdaterService) restartContainersUsingOldIDs(ctx context.Context, oldID
 		sorted = candidates
 	}
 
+	// Track old container ID -> new container ID mappings so we can rewrite
+	// stale NetworkMode references (e.g., "container:<old-id>") for dependents.
+	containerIDRemap := map[string]string{}
+
 	var results []updater.ResourceResult
 	for _, cd := range sorted {
 		p := plansByName[cd.Name]
@@ -1323,6 +1389,20 @@ func (s *UpdaterService) restartContainersUsingOldIDs(ctx context.Context, oldID
 			continue
 		}
 
+		// Rewrite stale NetworkMode container references before recreating.
+		// When a dependency (e.g., gluetun) was already recreated earlier in
+		// this cycle, dependents using "container:<old-id>" must be updated.
+		if p.inspect.HostConfig != nil && p.inspect.HostConfig.NetworkMode.IsContainer() {
+			oldRef := strings.TrimPrefix(string(p.inspect.HostConfig.NetworkMode), "container:")
+			if newID, ok := containerIDRemap[oldRef]; ok {
+				slog.InfoContext(ctx, "restartContainersUsingOldIDs: rewriting stale NetworkMode",
+					"container", name,
+					"oldNetworkRef", oldRef,
+					"newNetworkRef", newID)
+				p.inspect.HostConfig.NetworkMode = container.NetworkMode("container:" + newID)
+			}
+		}
+
 		slog.DebugContext(ctx, "restartContainersUsingOldIDs: restarting container", "containerId", p.cnt.ID, "container", name, "match", p.match, "newRef", p.newRef, "implicit", p.implicit)
 
 		func() {
@@ -1353,7 +1433,20 @@ func (s *UpdaterService) restartContainersUsingOldIDs(ctx context.Context, oldID
 				res.Status = "updated"
 				res.UpdateAvailable = true
 				res.UpdateApplied = true
-				slog.DebugContext(ctx, "restartContainersUsingOldIDs: update succeeded", "containerId", p.cnt.ID)
+
+				// Resolve the new container ID by name so we can remap
+				// NetworkMode references for dependents processed later.
+				newInspectResult, ierr := dcli.ContainerInspect(ctx, name, client.ContainerInspectOptions{})
+				if ierr == nil {
+					newContainerID := newInspectResult.Container.ID
+					containerIDRemap[p.cnt.ID] = newContainerID
+					slog.DebugContext(ctx, "restartContainersUsingOldIDs: update succeeded",
+						"containerId", p.cnt.ID, "newContainerId", newContainerID)
+					s.waitForContainerReady(ctx, dcli, newContainerID, name)
+				} else {
+					slog.DebugContext(ctx, "restartContainersUsingOldIDs: update succeeded (could not resolve new ID)",
+						"containerId", p.cnt.ID, "err", ierr)
+				}
 
 				// Send notification after successful container update
 				if s.notificationService != nil {

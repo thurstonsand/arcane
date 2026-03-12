@@ -1333,7 +1333,6 @@ func (s *UpdaterService) restartContainersUsingOldIDs(ctx context.Context, oldID
 
 	sorter := arcaneupdater.NewContainerSorter(candidates)
 	sorted, sortErr := sorter.Sort()
-	_, _ = sorter.SortReverse() // keep method used; reverse order may be useful for future stop-first flows
 	if sortErr != nil {
 		slog.WarnContext(ctx, "restartContainersUsingOldIDs: dependency sort failed, falling back to unsorted order", "error", sortErr.Error())
 		sorted = candidates
